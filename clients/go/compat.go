@@ -3,62 +3,85 @@ package sapphire
 import (
 	"context"
 	"crypto/ecdsa"
-	"encoding/hex"
-	"fmt"
+	"io"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-var SapphireChainID = big.NewInt(23295)
-
-const DefaultGasLimit = 30_000_000
-const DefaultGasPrice = 1
+const DefaultGasLimit = 30_000_000      // Default gas params are assigned in the web3 gateway.
+const DefaultGasPrice = 100_000_000_000 // 1 * 100_000_000_000
 const DefaultBlockRange = 15
 
-// TODO: maybe i need to modify this
-// NewKeyedTransactorWithChainID is a utility method to easily create a transaction signer
-// from a single private key.
-func NewKeyedTransactorWithChainID(key *ecdsa.PrivateKey, chainID *big.Int) (*bind.TransactOpts, error) {
-	keyAddr := crypto.PubkeyToAddress(key.PublicKey)
-	if chainID == nil {
-		return nil, bind.ErrNoChainID
-	}
-	signer := types.LatestSignerForChainID(chainID)
-	return &bind.TransactOpts{
-		From: keyAddr,
-		Signer: func(address common.Address, tx *types.Transaction) (*types.Transaction, error) {
-			if address != keyAddr {
-				return nil, bind.ErrNotAuthorized
-			}
-			signature, err := crypto.Sign(signer.Hash(tx).Bytes(), key)
-			if err != nil {
-				return nil, err
-			}
-			return tx.WithSignature(signer, signature)
-		},
-		Context: context.Background(),
-	}, nil
-}
-
 type WrappedBackend struct {
-	Backend bind.ContractBackend
-	Signer  Signer
+	Backend      bind.ContractBackend
+	ChainID      big.Int
+	Key          ecdsa.PrivateKey
+	TransactOpts bind.TransactOpts
+	Signer       WrappedSigner
 }
 
-func WrapBackend(backend bind.ContractBackend) WrappedBackend {
+type WrappedSigner struct {
+	SignFn func(digest [32]byte) ([]byte, error)
+}
+
+func NewWrappedBackend(backend bind.ContractBackend, transactOpts *bind.TransactOpts, chainID *big.Int, privateKey *ecdsa.PrivateKey, signerFn func(digest [32]byte) ([]byte, error)) WrappedBackend {
 	return WrappedBackend{
-		Backend: backend,
+		Backend:      backend,
+		ChainID:      *chainID,
+		Key:          *privateKey,
+		TransactOpts: *transactOpts,
+		Signer:       NewSigner(signerFn),
 	}
+}
+
+func (w WrappedSigner) Sign(digest [32]byte) ([]byte, error) {
+	return w.SignFn(digest)
 }
 
 func (b WrappedBackend) SendTransaction(ctx context.Context, tx *types.Transaction) error {
-	fmt.Println(tx)
-	return b.Backend.SendTransaction(ctx, tx)
+	header, err := b.Backend.HeaderByNumber(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	blockHash := header.Hash()
+	leash := Leash{
+		Nonce:       tx.Nonce(),
+		BlockNumber: header.Number.Uint64(),
+		BlockHash:   blockHash[:],
+		BlockRange:  DefaultBlockRange,
+	}
+
+	var callee []byte
+	if tx.To() != nil {
+		callee = tx.To()[:]
+	}
+
+	dataPack, _ := NewDataPack(b.Signer, tx.ChainId().Uint64(), b.TransactOpts.From[:], callee, tx.Gas(), tx.GasPrice(), tx.Value(), tx.Data(), leash)
+
+	legacyTx := &types.LegacyTx{
+		To:       tx.To(),
+		Nonce:    tx.Nonce(),
+		GasPrice: tx.GasPrice(),
+		Gas:      DefaultGasLimit,
+		Value:    tx.Value(),
+		Data:     dataPack.Encode(),
+	}
+
+	baseTx := *types.NewTx(legacyTx)
+
+	signer := types.LatestSignerForChainID(tx.ChainId())
+	signature, _ := crypto.Sign(signer.Hash(&baseTx).Bytes(), &b.Key)
+	signedTx, _ := baseTx.WithSignature(signer, signature)
+
+	return b.Backend.SendTransaction(ctx, signedTx)
 }
 
 func (b WrappedBackend) CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
@@ -70,10 +93,6 @@ func (b WrappedBackend) CodeAt(ctx context.Context, contract common.Address, blo
 }
 
 func (b WrappedBackend) EstimateGas(ctx context.Context, call ethereum.CallMsg) (gas uint64, err error) {
-	fmt.Println("sapp estimate gas")
-	fmt.Println("contract data:")
-	fmt.Println(call.Data)
-	fmt.Println(hex.EncodeToString(call.Data))
 	header, err := b.Backend.HeaderByNumber(ctx, nil)
 	if err != nil {
 		return 0, err
@@ -86,20 +105,24 @@ func (b WrappedBackend) EstimateGas(ctx context.Context, call ethereum.CallMsg) 
 		BlockHash:   blockHash[:],
 		BlockRange:  DefaultBlockRange,
 	}
-	dp, err := NewDataPack(nil, SapphireChainID.Uint64(), call.From[:], call.To[:], DefaultGasLimit, call.GasPrice, call.Value, call.Data, leash)
 
-	if err != nil {
-		return 0, err
+	var callee []byte
+	if call.To != nil {
+		callee = call.To[:]
 	}
+
+	dataPack, _ := NewDataPack(b.Signer, b.ChainID.Uint64(), call.From[:], callee, DefaultGasLimit, call.GasPrice, call.Value, call.Data, leash)
+	call.Data = dataPack.Encode()
+
 	return b.Backend.EstimateGas(ctx, call)
 }
 
+// TODO: check this
 func (b WrappedBackend) FilterLogs(ctx context.Context, query ethereum.FilterQuery) ([]types.Log, error) {
 	return b.Backend.FilterLogs(ctx, query)
 }
 
 func (b WrappedBackend) HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error) {
-	fmt.Println("sapp header by number")
 	return b.Backend.HeaderByNumber(ctx, number)
 }
 
@@ -112,8 +135,6 @@ func (b WrappedBackend) PendingNonceAt(ctx context.Context, account common.Addre
 }
 
 func (b WrappedBackend) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
-	fmt.Println("sapp suggest gas price")
-
 	return b.Backend.SuggestGasPrice(ctx)
 }
 
@@ -123,4 +144,75 @@ func (b WrappedBackend) SuggestGasTipCap(ctx context.Context) (*big.Int, error) 
 
 func (b WrappedBackend) SubscribeFilterLogs(ctx context.Context, query ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error) {
 	return b.Backend.SubscribeFilterLogs(ctx, query, ch)
+}
+
+func NewSigner(signerFn func(digest [32]byte) ([]byte, error)) WrappedSigner {
+	return WrappedSigner{
+		SignFn: signerFn,
+	}
+}
+
+// NewKeyedTransactorWithChainID is a utility method to easily create a transaction signer
+// from a single private key.
+func NewKeyedTransactorWithChainID(key *ecdsa.PrivateKey, chainID *big.Int) (*bind.TransactOpts, error) {
+	if chainID == nil {
+		return nil, bind.ErrNoChainID
+	}
+	signer := types.LatestSignerForChainID(chainID)
+	from := crypto.PubkeyToAddress(key.PublicKey)
+	return &bind.TransactOpts{
+		GasPrice: big.NewInt(DefaultGasPrice),
+		GasLimit: DefaultGasLimit,
+		From:     from,
+		Signer: func(address common.Address, tx *types.Transaction) (*types.Transaction, error) {
+			if address != from {
+				return nil, bind.ErrNotAuthorized
+			}
+			signature, err := crypto.Sign(signer.Hash(tx).Bytes(), key)
+			if err != nil {
+				return nil, err
+			}
+			return tx.WithSignature(signer, signature)
+		},
+		Context: context.Background(),
+	}, nil
+}
+
+// NewKeyStoreTransactorWithChainID is a utility method to easily create a transaction signer from
+// an decrypted key from a keystore.
+func NewKeyStoreTransactorWithChainID(keystore *keystore.KeyStore, account accounts.Account, chainID *big.Int) (*bind.TransactOpts, error) {
+	if chainID == nil {
+		return nil, bind.ErrNoChainID
+	}
+	signer := types.LatestSignerForChainID(chainID)
+	return &bind.TransactOpts{
+		GasPrice: big.NewInt(DefaultGasPrice),
+		GasLimit: DefaultGasLimit,
+		From:     account.Address,
+		Signer: func(address common.Address, tx *types.Transaction) (*types.Transaction, error) {
+			if address != account.Address {
+				return nil, bind.ErrNotAuthorized
+			}
+			signature, err := keystore.SignHash(account, signer.Hash(tx).Bytes())
+			if err != nil {
+				return nil, err
+			}
+			return tx.WithSignature(signer, signature)
+		},
+		Context: context.Background(),
+	}, nil
+}
+
+// NewTransactorWithChainID is a utility method to easily create a transaction signer from
+// an encrypted json key stream and the associated passphrase.
+func NewTransactorWithChainID(keyin io.Reader, passphrase string, chainID *big.Int) (*bind.TransactOpts, error) {
+	json, err := io.ReadAll(keyin)
+	if err != nil {
+		return nil, err
+	}
+	key, err := keystore.DecryptKey(json, passphrase)
+	if err != nil {
+		return nil, err
+	}
+	return NewKeyedTransactorWithChainID(key.PrivateKey, chainID)
 }
