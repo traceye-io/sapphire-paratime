@@ -31,6 +31,14 @@ type WrappedSigner struct {
 	SignFn func(digest [32]byte) ([]byte, error)
 }
 
+func addressToByte(addr *common.Address) []byte {
+	if addr != nil {
+		return addr[:]
+	}
+
+	return nil
+}
+
 func NewWrappedBackend(backend bind.ContractBackend, transactOpts *bind.TransactOpts, chainID *big.Int, privateKey *ecdsa.PrivateKey, signerFn func(digest [32]byte) ([]byte, error)) WrappedBackend {
 	return WrappedBackend{
 		Backend:      backend,
@@ -52,19 +60,10 @@ func (b WrappedBackend) SendTransaction(ctx context.Context, tx *types.Transacti
 	}
 
 	blockHash := header.Hash()
-	leash := Leash{
-		Nonce:       tx.Nonce(),
-		BlockNumber: header.Number.Uint64(),
-		BlockHash:   blockHash[:],
-		BlockRange:  DefaultBlockRange,
-	}
+	leash := NewLeash(header.Nonce.Uint64(), header.Number.Uint64(), blockHash[:], DefaultBlockRange)
 
-	var callee []byte
-	if tx.To() != nil {
-		callee = tx.To()[:]
-	}
-
-	dataPack, _ := NewDataPack(b.Signer, tx.ChainId().Uint64(), b.TransactOpts.From[:], callee, tx.Gas(), tx.GasPrice(), tx.Value(), tx.Data(), leash)
+	cipher := NewPlainCipher()
+	dataPack, _ := NewDataPack(b.Signer, tx.ChainId().Uint64(), b.TransactOpts.From[:], addressToByte(tx.To()), tx.Gas(), tx.GasPrice(), tx.Value(), tx.Data(), leash)
 
 	legacyTx := &types.LegacyTx{
 		To:       tx.To(),
@@ -72,7 +71,7 @@ func (b WrappedBackend) SendTransaction(ctx context.Context, tx *types.Transacti
 		GasPrice: tx.GasPrice(),
 		Gas:      DefaultGasLimit,
 		Value:    tx.Value(),
-		Data:     dataPack.Encode(),
+		Data:     dataPack.EncryptEncode(cipher),
 	}
 
 	baseTx := *types.NewTx(legacyTx)
@@ -84,6 +83,7 @@ func (b WrappedBackend) SendTransaction(ctx context.Context, tx *types.Transacti
 	return b.Backend.SendTransaction(ctx, signedTx)
 }
 
+// TODO:
 func (b WrappedBackend) CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
 	return b.Backend.CallContract(ctx, call, blockNumber)
 }
@@ -99,19 +99,9 @@ func (b WrappedBackend) EstimateGas(ctx context.Context, call ethereum.CallMsg) 
 	}
 
 	blockHash := header.Hash()
-	leash := Leash{
-		Nonce:       header.Nonce.Uint64(),
-		BlockNumber: header.Number.Uint64(),
-		BlockHash:   blockHash[:],
-		BlockRange:  DefaultBlockRange,
-	}
+	leash := NewLeash(header.Nonce.Uint64(), header.Number.Uint64(), blockHash[:], DefaultBlockRange)
 
-	var callee []byte
-	if call.To != nil {
-		callee = call.To[:]
-	}
-
-	dataPack, _ := NewDataPack(b.Signer, b.ChainID.Uint64(), call.From[:], callee, DefaultGasLimit, call.GasPrice, call.Value, call.Data, leash)
+	dataPack, _ := NewDataPack(b.Signer, b.ChainID.Uint64(), call.From[:], addressToByte(call.To), DefaultGasLimit, call.GasPrice, call.Value, call.Data, leash)
 	call.Data = dataPack.Encode()
 
 	return b.Backend.EstimateGas(ctx, call)

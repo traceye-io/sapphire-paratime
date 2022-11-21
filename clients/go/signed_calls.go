@@ -4,7 +4,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
-	"strings"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
@@ -12,6 +11,8 @@ import (
 	"github.com/ethereum/go-ethereum/signer/core/apitypes"
 	"github.com/oasisprotocol/oasis-core/go/common/cbor"
 )
+
+const ZeroAddress = "0x0000000000000000000000000000000000000000"
 
 // Signer is a type that produces secp256k1 signatures in RSV format.
 type Signer interface {
@@ -54,7 +55,7 @@ func NewDataPack(signer Signer, chainId uint64, caller, callee []byte, gasLimit 
 		return nil, fmt.Errorf("failed to sign call: %w", err)
 	}
 	return &SignedCallDataPack{
-		Data:      DataEnvelope{Body: data, Format: 0}, // TODO: unhardcode this
+		Data:      DataEnvelope{Body: data},
 		Leash:     leash,
 		Signature: signature,
 	}, nil
@@ -64,11 +65,30 @@ func (p *SignedCallDataPack) Encode() []byte {
 	return hexutil.Bytes(cbor.Marshal(p.Data))
 }
 
+func (p *SignedCallDataPack) EncryptEncode(cipher Cipher) []byte {
+	// Encrypt when data exists
+	if p.Data.Body != nil {
+		envelope := cipher.EncryptEnvelope(p.Data.Body)
+
+		return hexutil.Bytes(cbor.Marshal(envelope))
+	}
+
+	return p.Encode()
+}
+
+func NewLeash(nonce uint64, blockNumber uint64, blockHash []byte, blockRange uint64) Leash {
+	return Leash{
+		Nonce:       nonce,
+		BlockNumber: blockNumber,
+		BlockHash:   blockHash,
+		BlockRange:  blockRange,
+	}
+}
+
 func makeSignableCall(chainId uint64, caller, callee []byte, gasLimit uint64, gasPrice *big.Int, value *big.Int, data []byte, leash Leash) apitypes.TypedData {
-	var toAddr string
-	if callee == nil {
-		toAddr = "0x" + strings.Repeat("0", 40)
-	} else {
+	toAddr := ZeroAddress
+	// callee should exist except for contract creation
+	if callee != nil {
 		toAddr = hex.EncodeToString(callee[:])
 	}
 
