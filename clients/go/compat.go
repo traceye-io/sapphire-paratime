@@ -85,7 +85,29 @@ func (b WrappedBackend) SendTransaction(ctx context.Context, tx *types.Transacti
 
 // TODO:
 func (b WrappedBackend) CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
-	return b.Backend.CallContract(ctx, call, blockNumber)
+	header, err := b.Backend.HeaderByNumber(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	blockHash := header.Hash()
+	leash := NewLeash(header.Nonce.Uint64(), header.Number.Uint64(), blockHash[:], DefaultBlockRange)
+
+	cipher := NewPlainCipher()
+	dataPack, err := NewDataPack(b.Signer, b.ChainID.Uint64(), call.From[:], addressToByte(call.To), DefaultGasLimit, call.GasPrice, call.Value, call.Data, leash)
+
+	if err != nil {
+		return nil, err
+	}
+
+	call.Data = dataPack.EncryptEncode(cipher)
+	res, err := b.Backend.CallContract(ctx, call, blockNumber)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return cipher.DecryptEncoded(res)
 }
 
 func (b WrappedBackend) CodeAt(ctx context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error) {

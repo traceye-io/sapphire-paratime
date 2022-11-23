@@ -1,8 +1,14 @@
 package sapphire
 
 import (
+	"crypto/cipher"
+	"errors"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/oasisprotocol/deoxysii"
+	_ "github.com/oasisprotocol/deoxysii"
 	"github.com/oasisprotocol/oasis-core/go/common/cbor"
+	"github.com/twystd/tweetnacl-go/tweetnacl"
 )
 
 type Kind uint64
@@ -12,14 +18,36 @@ const (
 	X25519DeoxysII = 1
 )
 
+var (
+	ErrCallFailed       = errors.New("call failed in module")
+	ErrCallResultDecode = errors.New("could not decode call result")
+)
+
+type CallResult struct {
+	Fail    *Failure
+	OK      []byte `cbor:"ok,omitempty"`
+	Unknown *Unknown
+}
+
+type Failure struct {
+	Module  []byte `cbor:"module"`
+	Code    uint64 `cbor:"code"`
+	Message []byte `cbor:"message,omitempty"`
+}
+
+type Unknown struct {
+	Nonce []byte `cbor:"nonce"`
+	Data  []byte `cbor:"data"`
+}
+
 type Cipher interface {
 	Kind() uint64
 	PublicKey() []byte
-	// Encrypt(plaintext []byte) (ciphertext []byte, nonce []byte)
+	Encrypt(plaintext []byte) (ciphertext []byte, nonce []byte)
 	// Decrypt(nonce []byte, ciphertext []byte) (plaintext []byte)
 	EncryptEncode(plaintext []byte) []byte
 	EncryptEnvelope(plaintext []byte) *DataEnvelope
-	// DecryptEncoded([]byte) string
+	DecryptEncoded(result []byte) ([]byte, error)
 	// DecryptCallResult(string) string
 }
 
@@ -45,6 +73,25 @@ func (p PlainCipher) Encrypt(plaintext []byte) (ciphertext []byte, nonce []byte)
 
 func (p PlainCipher) Decrypt(nonce []byte, ciphertext []byte) (plaintext []byte) {
 	return ciphertext
+}
+
+func (p PlainCipher) DecryptEncoded(response []byte) ([]byte, error) {
+	var callResult CallResult
+	cbor.MustUnmarshal(response, &callResult)
+
+	if callResult.Fail != nil {
+		return nil, ErrCallFailed
+	}
+
+	if callResult.Unknown != nil {
+		return callResult.Unknown.Data, nil
+	}
+
+	if callResult.OK != nil {
+		return callResult.OK, nil
+	}
+
+	return nil, ErrCallResultDecode
 }
 
 func (p PlainCipher) encryptCallData(plaintext []byte) (ciphertext []byte, nonce []byte) {

@@ -35,7 +35,7 @@ type SignedCallDataPack struct {
 // a callformat encode method.
 type DataEnvelope struct {
 	Body   []byte `json:"body"`
-	Format uint64 `json:"format"`
+	Format uint64 `json:"format,omitempty"` // reuse for now, TODO swap later
 }
 
 type Leash struct {
