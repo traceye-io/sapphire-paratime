@@ -4,6 +4,10 @@ go 1.17
 
 require github.com/ethereum/go-ethereum v1.10.26
 
+require github.com/twystd/tweetnacl-go v0.0.0-20210413205227-681aa97ec383
+
+require github.com/oasisprotocol/oasis-sdk/client-sdk/go v0.2.0 // indirect
+
 require (
 	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -18,6 +22,7 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
+	github.com/oasisprotocol/deoxysii v0.0.0-20220228165953-2091330c22b7
 	github.com/oasisprotocol/oasis-core/go v0.2202.1
 	github.com/prometheus/client_golang v1.13.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect

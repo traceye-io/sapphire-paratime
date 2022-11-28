@@ -24,9 +24,9 @@ type Signer interface {
 //
 // It should be encoded and sent in the `data` field of an Ethereum call.
 type SignedCallDataPack struct {
-	Data      DataEnvelope `json:"data"`
-	Leash     Leash        `json:"leash"`
-	Signature []byte       `json:"signature"`
+	Data      Data   `json:"data"`
+	Leash     Leash  `json:"leash"`
+	Signature []byte `json:"signature"`
 }
 
 // DataEnvelope is an oasis-sdk `Call` without optional fields.
@@ -36,6 +36,16 @@ type SignedCallDataPack struct {
 type DataEnvelope struct {
 	Body   []byte `json:"body"`
 	Format uint64 `json:"format,omitempty"` // reuse for now, TODO swap later
+}
+
+type Body struct {
+	PK    []byte `cbor:"pk,omitempty"`
+	Data  []byte `cbor:"data"`
+	Nonce []byte `cbor:"nonce,omitempty"`
+}
+
+type Data struct {
+	Body []byte `json:"body"`
 }
 
 type Leash struct {
@@ -55,14 +65,14 @@ func NewDataPack(signer Signer, chainId uint64, caller, callee []byte, gasLimit 
 		return nil, fmt.Errorf("failed to sign call: %w", err)
 	}
 	return &SignedCallDataPack{
-		Data:      DataEnvelope{Body: data},
+		Data:      Data{Body: data},
 		Leash:     leash,
 		Signature: signature,
 	}, nil
 }
 
 func (p *SignedCallDataPack) Encode() []byte {
-	return hexutil.Bytes(cbor.Marshal(p.Data))
+	return hexutil.Bytes(cbor.Marshal(p.Data.Body))
 }
 
 func (p *SignedCallDataPack) EncryptEncode(cipher Cipher) []byte {
