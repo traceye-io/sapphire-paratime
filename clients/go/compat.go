@@ -1,13 +1,18 @@
 package sapphire
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
+	"encoding/json"
 	"io"
 	"math/big"
+	"net/http"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/oasisprotocol/emerald-web3-gateway/rpc/oasis"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
@@ -37,6 +42,54 @@ func addressToByte(addr *common.Address) []byte {
 	}
 
 	return nil
+}
+
+type Request struct {
+	Version string      `json:"jsonrpc"`
+	Method  string      `json:"method"`
+	Params  interface{} `json:"params"`
+	ID      int         `json:"id"`
+}
+
+type Error struct {
+	Code    int         `json:"code"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data,omitempty"`
+}
+
+type Response struct {
+	Error  *Error          `json:"error"`
+	ID     int             `json:"id"`
+	Result json.RawMessage `json:"result,omitempty"`
+}
+
+func GetRuntimePublicKey() ([]byte, error) {
+	endpoint := "https://testnet.sapphire.oasis.dev/"
+	request := Request{
+		Version: "2.0",
+		Method:  "oasis_callDataPublicKey",
+		Params:  []string{},
+		ID:      1,
+	}
+	rawReq, _ := json.Marshal(request)
+
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, endpoint, bytes.NewBuffer(rawReq))
+	req.Header.Set("Content-Type", "application/json")
+
+	client := http.Client{}
+	res, _ := client.Do(req)
+
+	decoder := json.NewDecoder(res.Body)
+	rpcRes := new(Response)
+	_ = decoder.Decode(&rpcRes)
+
+	_ = res.Body.Close()
+
+	var pubKey oasis.CallDataPublicKey
+	json.Unmarshal(rpcRes.Result, &pubKey)
+
+	return pubKey.PublicKey, nil
+	// return hexutil.Bytes("0x0f1f97795f86fd61c15558703648068d6ea699373292f114d12fa4ae40fa1a49"), nil
 }
 
 func NewWrappedBackend(backend bind.ContractBackend, transactOpts *bind.TransactOpts, chainID *big.Int, privateKey *ecdsa.PrivateKey, signerFn func(digest [32]byte) ([]byte, error)) WrappedBackend {
