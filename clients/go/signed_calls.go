@@ -39,9 +39,9 @@ type DataEnvelope struct {
 }
 
 type Body struct {
-	PK    []byte `cbor:"pk,omitempty"`
-	Data  []byte `cbor:"data"`
-	Nonce []byte `cbor:"nonce,omitempty"`
+	PK    []byte `json:"pk"`
+	Data  []byte `json:"data"`
+	Nonce []byte `json:"nonce"`
 }
 
 type Data struct {

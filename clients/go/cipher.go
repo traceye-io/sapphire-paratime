@@ -49,7 +49,7 @@ type Cipher interface {
 	EncryptEncode(plaintext []byte) []byte
 	EncryptEnvelope(plaintext []byte) *DataEnvelope
 	DecryptEncoded(result []byte) ([]byte, error)
-	// DecryptCallResult(string) string
+	DecryptCallResult(result []byte) ([]byte, error)
 }
 
 type PlainCipher struct {
@@ -76,10 +76,11 @@ func (p PlainCipher) Decrypt(nonce []byte, ciphertext []byte) (plaintext []byte)
 	return ciphertext
 }
 
-func (p PlainCipher) DecryptEncoded(response []byte) ([]byte, error) {
+func (p PlainCipher) DecryptCallResult(response []byte) ([]byte, error) {
 	var callResult CallResult
 	cbor.MustUnmarshal(response, &callResult)
 
+	// TODO: actually decode and return failure
 	if callResult.Fail != nil {
 		return nil, ErrCallFailed
 	}
@@ -93,6 +94,10 @@ func (p PlainCipher) DecryptEncoded(response []byte) ([]byte, error) {
 	}
 
 	return nil, ErrCallResultDecode
+}
+
+func (p PlainCipher) DecryptEncoded(response []byte) ([]byte, error) {
+	return p.DecryptCallResult(response)
 }
 
 func (p PlainCipher) encryptCallData(plaintext []byte) (ciphertext []byte, nonce []byte) {
@@ -203,4 +208,28 @@ func (p X25519DeoxysIICipher) EncryptEncode(plaintext []byte) []byte {
 	envelope := p.EncryptEnvelope(plaintext)
 
 	return hexutil.Bytes(cbor.Marshal(envelope))
+}
+
+func (p X25519DeoxysIICipher) DecryptCallResult(response []byte) ([]byte, error) {
+	var callResult CallResult
+	cbor.MustUnmarshal(response, &callResult)
+
+	// TODO: actually decode and return failure
+	if callResult.Fail != nil {
+		return nil, ErrCallFailed
+	}
+
+	if callResult.Unknown != nil {
+		return callResult.Unknown.Data, nil
+	}
+
+	if callResult.OK != nil {
+		return callResult.OK, nil
+	}
+
+	return nil, ErrCallResultDecode
+}
+
+func (p X25519DeoxysIICipher) DecryptEncoded(response []byte) ([]byte, error) {
+	return p.DecryptCallResult(response)
 }

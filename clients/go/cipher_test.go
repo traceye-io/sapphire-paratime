@@ -41,7 +41,7 @@ func TestPlainCipher(t *testing.T) {
 		t.Fatalf("envelope should be created for data")
 	}
 
-	if hex.EncodeToString(envelope.Body) == "[1,2,3,4,5]" {
+	if hex.EncodeToString(envelope.Body) == string(TestData) {
 		t.Fatalf("envelope should match data: %v", envelope.Body)
 	}
 
@@ -103,27 +103,22 @@ func TestDeoxysIICipher(t *testing.T) {
 	}
 
 	// EncryptEnvelope
-	// envelope := cipher.EncryptEnvelope(TestData)
+	envelope := cipher.EncryptEnvelope(TestData)
 
-	// if envelope.Format != X25519DeoxysII {
-	// 	t.Fatalf("deoxysii envelope format does not match: %v", envelope.Format)
-	// }
+	if envelope.Format != X25519DeoxysII {
+		t.Fatalf("deoxysii envelope format does not match: %v", envelope.Format)
+	}
 
-	// var body Body
-	// fmt.Println(hexutil.Encode(envelope.Body))
-	// cbor.Unmarshal(envelope.Body, body)
+	var body Body
+	cbor.MustUnmarshal(envelope.Body, &body)
 
-	// if err != nil {
-	// 	t.Fatalf("body enveloped incorrectly: %v", &body)
-	// }
+	if body.Nonce == nil {
+		t.Fatalf("nonce should not be nil")
+	}
 
-	// if string(body.Nonce) != string(nonce) {
-	// 	t.Fatalf("nonce enveloped incorrectly: %v", &body.Nonce)
-	// }
-
-	// if string(body.PK) != string(peerKeyPair.PublicKey) {
-	// 	t.Fatalf("pk enveloped incorrectly: %v", &body.PK)
-	// }
+	if string(body.PK) != string(cipher.PublicKey) {
+		t.Fatalf("pk enveloped incorrectly: %v %v", body.PK, cipher.PublicKey)
+	}
 
 	// EncryptEncode
 	encrypted, nonce := cipher.Encrypt(cbor.Marshal(CallResult{
@@ -144,10 +139,13 @@ func TestDeoxysIICipher(t *testing.T) {
 		t.Fatalf("decrypt failed: %v", err)
 	}
 
-	if string(decrypted) != string(TestData) {
-		t.Fatalf("decrypt failed: %v", decrypted)
+	data, err := cipher.DecryptCallResult(decrypted)
+
+	if err != nil {
+		t.Fatalf("call result parsing failed: %v", err)
 	}
 
-	// Decrypt the Encoded
-	// TODO use decryptcallresult
+	if string(data) != string(TestData) {
+		t.Fatalf("decrypt failed: %v", decrypted)
+	}
 }
