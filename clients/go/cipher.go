@@ -27,20 +27,25 @@ var (
 )
 
 type CallResult struct {
-	Fail    *Failure `cbor:"failure,omitempty"`
-	OK      []byte   `cbor:"ok,omitempty"`
-	Unknown *Unknown `cbor:"unknown,omitempty"`
+	Fail    *Failure `json:"failure,omitempty"`
+	OK      []byte   `json:"ok,omitempty"`
+	Unknown *Unknown `json:"unknown,omitempty"`
+}
+
+type Inner struct {
+	Fail *Failure `json:"fail"`
+	OK   []byte   `json:"ok"`
 }
 
 type Failure struct {
-	Module  []byte `cbor:"module"`
-	Code    uint64 `cbor:"code"`
-	Message []byte `cbor:"message,omitempty"`
+	Module  []byte `json:"module"`
+	Code    uint64 `json:"code"`
+	Message []byte `json:"message,omitempty"`
 }
 
 type Unknown struct {
-	Nonce []byte `cbor:"nonce"`
-	Data  []byte `cbor:"data"`
+	Nonce []byte `json:"nonce"`
+	Data  []byte `json:"data"`
 }
 
 type Cipher interface {
@@ -229,7 +234,26 @@ func (p X25519DeoxysIICipher) DecryptCallResult(response []byte) ([]byte, error)
 	}
 
 	if callResult.Unknown != nil {
-		return callResult.Unknown.Data, nil
+		decrypted, err := p.Decrypt(callResult.Unknown.Nonce, callResult.Unknown.Data)
+
+		if err != nil {
+			return nil, err
+		}
+
+		var innerResult Inner
+		cbor.MustUnmarshal(decrypted, &innerResult)
+
+		if innerResult.OK != nil {
+			return innerResult.OK, nil
+		}
+
+		if innerResult.Fail.Message != nil {
+			msg := "Call failed in module" + string(innerResult.Fail.Module) + "with code" + fmt.Sprint(innerResult.Fail.Code)
+
+			return nil, errors.New(msg)
+		}
+
+		return nil, errors.New("Unexpected inner call result:" + string(callResult.Unknown.Data))
 	}
 
 	if callResult.OK != nil {
