@@ -50,11 +50,11 @@ type PlainEnvelope struct {
 
 type FancyEnvelope struct {
 	Body   Body   `json:"body"`
-	Format uint64 `json:"format,omitempty"` // reuse for now, TODO swap later
+	Format uint64 `json:"format"` // reuse for now, TODO swap later
 }
 
 type Body struct {
-	PK    []byte `json:"pk,omitempty"`
+	PK    []byte `json:"pk"`
 	Data  []byte `json:"data"`
 	Nonce []byte `json:"nonce"`
 }

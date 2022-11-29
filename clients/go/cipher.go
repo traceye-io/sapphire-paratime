@@ -2,7 +2,8 @@ package sapphire
 
 import (
 	"crypto/cipher"
-	"crypto/sha256"
+	"crypto/hmac"
+	"crypto/sha512"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -149,8 +150,16 @@ func NewX255919DeoxysIICipher(keypair tweetnacl.KeyPair, peerPublicKey []byte) (
 		return nil, err
 	}
 
-	hashed := sha256.Sum256(key)
-	cipher, err := deoxysii.New(hashed[:])
+	hash := hmac.New(sha512.New512_256, hexutil.Bytes("MRAE_Box_Deoxys-II-256-128"))
+
+	_, err = hash.Write(key)
+
+	if err != nil {
+		return nil, err
+	}
+	var hashed []byte
+	sharedKey := hash.Sum(hashed)
+	cipher, err := deoxysii.New(sharedKey)
 
 	if err != nil {
 		return nil, err
@@ -158,7 +167,7 @@ func NewX255919DeoxysIICipher(keypair tweetnacl.KeyPair, peerPublicKey []byte) (
 
 	return &X25519DeoxysIICipher{
 		PublicKey:  keypair.PublicKey,
-		PrivateKey: hashed[:],
+		PrivateKey: sharedKey,
 		Cipher:     cipher,
 	}, nil
 }

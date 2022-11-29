@@ -94,7 +94,11 @@ func GetRuntimePublicKey() ([]byte, error) {
 }
 
 func NewWrappedBackend(backend bind.ContractBackend, transactOpts *bind.TransactOpts, chainID *big.Int, privateKey *ecdsa.PrivateKey, signerFn func(digest [32]byte) ([]byte, error)) WrappedBackend {
-	runtimePublicKey, _ := GetRuntimePublicKey()
+	runtimePublicKey, err := GetRuntimePublicKey()
+
+	if err != nil {
+		fmt.Println("failed to get runtime public key", err)
+	}
 
 	return WrappedBackend{
 		Backend:          backend,
@@ -118,13 +122,12 @@ func (b WrappedBackend) SendTransaction(ctx context.Context, tx *types.Transacti
 
 	blockHash := header.Hash()
 	leash := NewLeash(header.Nonce.Uint64(), header.Number.Uint64(), blockHash[:], DefaultBlockRange)
-
+	publicKey, _ := tweetnacl.ScalarMultBase(crypto.FromECDSA(&b.Key))
 	keypair := tweetnacl.KeyPair{
-		PublicKey: crypto.CompressPubkey(&b.Key.PublicKey),
+		PublicKey: publicKey,
 		SecretKey: crypto.FromECDSA(&b.Key),
 	}
 	cipher, _ := NewX255919DeoxysIICipher(keypair, b.RuntimePublicKey)
-	// cipher := NewPlainCipher()
 	dataPack, _ := NewDataPack(b.Signer, tx.ChainId().Uint64(), b.TransactOpts.From[:], addressToByte(tx.To()), tx.Gas(), tx.GasPrice(), tx.Value(), tx.Data(), leash)
 
 	legacyTx := &types.LegacyTx{
@@ -155,7 +158,12 @@ func (b WrappedBackend) CallContract(ctx context.Context, call ethereum.CallMsg,
 	blockHash := header.Hash()
 	leash := NewLeash(header.Nonce.Uint64(), header.Number.Uint64(), blockHash[:], DefaultBlockRange)
 
-	cipher := NewPlainCipher()
+	publicKey, _ := tweetnacl.ScalarMultBase(crypto.FromECDSA(&b.Key))
+	keypair := tweetnacl.KeyPair{
+		PublicKey: publicKey,
+		SecretKey: crypto.FromECDSA(&b.Key),
+	}
+	cipher, _ := NewX255919DeoxysIICipher(keypair, b.RuntimePublicKey)
 	dataPack, err := NewDataPack(b.Signer, b.ChainID.Uint64(), call.From[:], addressToByte(call.To), DefaultGasLimit, call.GasPrice, call.Value, call.Data, leash)
 
 	if err != nil {

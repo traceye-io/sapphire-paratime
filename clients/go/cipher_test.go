@@ -87,13 +87,13 @@ func TestDeoxysIICipher(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not init decode private key: %v", err)
 	}
+	pubKey, _ := tweetnacl.ScalarMultBase(crypto.FromECDSA(privateKey))
 	pair := tweetnacl.KeyPair{
-		PublicKey: crypto.CompressPubkey(&privateKey.PublicKey),
+		PublicKey: pubKey,
 		SecretKey: crypto.FromECDSA(privateKey),
 	}
-	// TODO: refactor to use dummy peer pub key
-	peerPublicKey, _ := GetRuntimePublicKey()
-	cipher, err := NewX255919DeoxysIICipher(pair, peerPublicKey)
+
+	cipher, err := NewX255919DeoxysIICipher(pair, pubKey)
 
 	if err != nil {
 		t.Fatalf("could not init deoxysii cipher: %v", err)
@@ -101,6 +101,14 @@ func TestDeoxysIICipher(t *testing.T) {
 
 	if string(cipher.PublicKey) != string(pair.PublicKey) {
 		t.Fatalf("deoxysii cipher public key does not match")
+	}
+
+	if hex.EncodeToString(cipher.PublicKey) != "3046db3fa70ce605457dc47c48837ebd8bd0a26abfde5994d033e1ced68e2576" {
+		t.Fatalf("deoxysii cipher public key does not match")
+	}
+
+	if hex.EncodeToString(cipher.PrivateKey) != "e69ac21066a8c2284e8fdc690e579af4513547b9b31dd144792c1904b45cf586" {
+		t.Fatalf("deoxysii cipher private key does not match: %v", hex.EncodeToString(cipher.PrivateKey))
 	}
 
 	// Encrypt
