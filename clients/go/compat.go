@@ -79,13 +79,21 @@ func GetRuntimePublicKey() ([]byte, error) {
 	req.Header.Set("Content-Type", "application/json")
 
 	client := http.Client{}
-	res, _ := client.Do(req)
+	res, err := client.Do(req)
+
+	if err != nil {
+		return nil, err
+	}
 
 	decoder := json.NewDecoder(res.Body)
 	rpcRes := new(Response)
-	_ = decoder.Decode(&rpcRes)
+	if err := decoder.Decode(&rpcRes); err != nil {
+		return nil, err
+	}
 
-	_ = res.Body.Close()
+	if err := res.Body.Close(); err != nil {
+		return nil, err
+	}
 
 	var pubKey oasis.CallDataPublicKey
 	json.Unmarshal(rpcRes.Result, &pubKey)
@@ -93,21 +101,21 @@ func GetRuntimePublicKey() ([]byte, error) {
 	return pubKey.PublicKey, nil
 }
 
-func NewWrappedBackend(backend bind.ContractBackend, transactOpts *bind.TransactOpts, chainID *big.Int, privateKey *ecdsa.PrivateKey, signerFn func(digest [32]byte) ([]byte, error)) WrappedBackend {
+func NewWrappedBackend(backend bind.ContractBackend, transactOpts *bind.TransactOpts, chainID *big.Int, privateKey *ecdsa.PrivateKey, signerFn func(digest [32]byte) ([]byte, error)) (*WrappedBackend, error) {
 	runtimePublicKey, err := GetRuntimePublicKey()
 
 	if err != nil {
-		fmt.Println("failed to get runtime public key", err)
+		return nil, err
 	}
 
-	return WrappedBackend{
+	return &WrappedBackend{
 		Backend:          backend,
 		ChainID:          *chainID,
 		Key:              *privateKey,
 		RuntimePublicKey: runtimePublicKey,
 		TransactOpts:     *transactOpts,
 		Signer:           NewSigner(signerFn),
-	}
+	}, nil
 }
 
 func (w WrappedSigner) Sign(digest [32]byte) ([]byte, error) {
@@ -148,7 +156,6 @@ func (b WrappedBackend) SendTransaction(ctx context.Context, tx *types.Transacti
 	return b.Backend.SendTransaction(ctx, signedTx)
 }
 
-// TODO:
 func (b WrappedBackend) CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
 	header, err := b.Backend.HeaderByNumber(ctx, nil)
 	if err != nil {
