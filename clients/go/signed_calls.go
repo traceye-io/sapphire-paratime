@@ -29,6 +29,11 @@ type SignedCallDataPack struct {
 	Signature []byte `json:"signature"`
 }
 
+// Part of the datapack
+type Data struct {
+	Body []byte `json:"body"`
+}
+
 // DataEnvelope is an oasis-sdk `Call` without optional fields.
 //
 // Replace this with an actual format-bearing `Call` during encryption using
@@ -38,14 +43,20 @@ type DataEnvelope struct {
 	Format uint64 `json:"format,omitempty"` // reuse for now, TODO swap later
 }
 
-type Body struct {
-	PK    []byte `json:"pk"`
-	Data  []byte `json:"data"`
-	Nonce []byte `json:"nonce"`
+type PlainEnvelope struct {
+	Body   []byte `json:"body"`
+	Format uint64 `json:"format,omitempty"` // reuse for now, TODO swap later
 }
 
-type Data struct {
-	Body []byte `json:"body"`
+type FancyEnvelope struct {
+	Body   Body   `json:"body"`
+	Format uint64 `json:"format,omitempty"` // reuse for now, TODO swap later
+}
+
+type Body struct {
+	PK    []byte `json:"pk,omitempty"`
+	Data  []byte `json:"data"`
+	Nonce []byte `json:"nonce"`
 }
 
 type Leash struct {
@@ -78,9 +89,7 @@ func (p *SignedCallDataPack) Encode() []byte {
 func (p *SignedCallDataPack) EncryptEncode(cipher Cipher) []byte {
 	// Encrypt when data exists
 	if p.Data.Body != nil {
-		envelope := cipher.EncryptEnvelope(p.Data.Body)
-
-		return hexutil.Bytes(cbor.Marshal(envelope))
+		return cipher.EncryptEncode(p.Data.Body)
 	}
 
 	return p.Encode()

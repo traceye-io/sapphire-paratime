@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/oasisprotocol/emerald-web3-gateway/rpc/oasis"
+	"github.com/twystd/tweetnacl-go/tweetnacl"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
@@ -25,11 +26,12 @@ const DefaultGasPrice = 100_000_000_000 // 1 * 100_000_000_000
 const DefaultBlockRange = 15
 
 type WrappedBackend struct {
-	Backend      bind.ContractBackend
-	ChainID      big.Int
-	Key          ecdsa.PrivateKey
-	TransactOpts bind.TransactOpts
-	Signer       WrappedSigner
+	Backend          bind.ContractBackend
+	ChainID          big.Int
+	Key              ecdsa.PrivateKey
+	RuntimePublicKey []byte
+	TransactOpts     bind.TransactOpts
+	Signer           WrappedSigner
 }
 
 type WrappedSigner struct {
@@ -89,16 +91,18 @@ func GetRuntimePublicKey() ([]byte, error) {
 	json.Unmarshal(rpcRes.Result, &pubKey)
 
 	return pubKey.PublicKey, nil
-	// return hexutil.Bytes("0x0f1f97795f86fd61c15558703648068d6ea699373292f114d12fa4ae40fa1a49"), nil
 }
 
 func NewWrappedBackend(backend bind.ContractBackend, transactOpts *bind.TransactOpts, chainID *big.Int, privateKey *ecdsa.PrivateKey, signerFn func(digest [32]byte) ([]byte, error)) WrappedBackend {
+	runtimePublicKey, _ := GetRuntimePublicKey()
+
 	return WrappedBackend{
-		Backend:      backend,
-		ChainID:      *chainID,
-		Key:          *privateKey,
-		TransactOpts: *transactOpts,
-		Signer:       NewSigner(signerFn),
+		Backend:          backend,
+		ChainID:          *chainID,
+		Key:              *privateKey,
+		RuntimePublicKey: runtimePublicKey,
+		TransactOpts:     *transactOpts,
+		Signer:           NewSigner(signerFn),
 	}
 }
 
@@ -115,7 +119,12 @@ func (b WrappedBackend) SendTransaction(ctx context.Context, tx *types.Transacti
 	blockHash := header.Hash()
 	leash := NewLeash(header.Nonce.Uint64(), header.Number.Uint64(), blockHash[:], DefaultBlockRange)
 
-	cipher := NewPlainCipher()
+	keypair := tweetnacl.KeyPair{
+		PublicKey: crypto.CompressPubkey(&b.Key.PublicKey),
+		SecretKey: crypto.FromECDSA(&b.Key),
+	}
+	cipher, _ := NewX255919DeoxysIICipher(keypair, b.RuntimePublicKey)
+	// cipher := NewPlainCipher()
 	dataPack, _ := NewDataPack(b.Signer, tx.ChainId().Uint64(), b.TransactOpts.From[:], addressToByte(tx.To()), tx.Gas(), tx.GasPrice(), tx.Value(), tx.Data(), leash)
 
 	legacyTx := &types.LegacyTx{
@@ -182,7 +191,6 @@ func (b WrappedBackend) EstimateGas(ctx context.Context, call ethereum.CallMsg) 
 	return b.Backend.EstimateGas(ctx, call)
 }
 
-// TODO: check this
 func (b WrappedBackend) FilterLogs(ctx context.Context, query ethereum.FilterQuery) ([]types.Log, error) {
 	return b.Backend.FilterLogs(ctx, query)
 }

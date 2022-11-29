@@ -43,11 +43,9 @@ type Unknown struct {
 
 type Cipher interface {
 	Kind() uint64
-	PublicKey() []byte
 	Encrypt(plaintext []byte) (ciphertext []byte, nonce []byte)
-	Decrypt(nonce []byte, ciphertext []byte) (plaintext []byte)
+	Decrypt(nonce []byte, ciphertext []byte) (plaintext []byte, err error)
 	EncryptEncode(plaintext []byte) []byte
-	EncryptEnvelope(plaintext []byte) *DataEnvelope
 	DecryptEncoded(result []byte) ([]byte, error)
 	DecryptCallResult(result []byte) ([]byte, error)
 }
@@ -72,8 +70,8 @@ func (p PlainCipher) Encrypt(plaintext []byte) (ciphertext []byte, nonce []byte)
 	return plaintext, nonce
 }
 
-func (p PlainCipher) Decrypt(nonce []byte, ciphertext []byte) (plaintext []byte) {
-	return ciphertext
+func (p PlainCipher) Decrypt(nonce []byte, ciphertext []byte) (plaintext []byte, err error) {
+	return ciphertext, nil
 }
 
 func (p PlainCipher) DecryptCallResult(response []byte) ([]byte, error) {
@@ -104,7 +102,7 @@ func (p PlainCipher) encryptCallData(plaintext []byte) (ciphertext []byte, nonce
 	return plaintext, make([]byte, 0)
 }
 
-func (p PlainCipher) EncryptEnvelope(plaintext []byte) *DataEnvelope {
+func (p PlainCipher) EncryptEnvelope(plaintext []byte) *PlainEnvelope {
 	// Txs without data are just balance transfers, and all data in those is public.
 	if len(plaintext) == 0 {
 		return nil
@@ -113,13 +111,13 @@ func (p PlainCipher) EncryptEnvelope(plaintext []byte) *DataEnvelope {
 	data, nonce := p.encryptCallData(plaintext)
 
 	if len(nonce) == 0 {
-		return &DataEnvelope{
+		return &PlainEnvelope{
 			Body:   data,
 			Format: p.Kind(),
 		}
 	}
 
-	return &DataEnvelope{
+	return &PlainEnvelope{
 		Body: cbor.Marshal(Body{
 			PK:    p.PublicKey(),
 			Nonce: nonce,
@@ -186,7 +184,7 @@ func (p X25519DeoxysIICipher) encryptCallData(plaintext []byte) (ciphertext []by
 	}))
 }
 
-func (p X25519DeoxysIICipher) EncryptEnvelope(plaintext []byte) *DataEnvelope {
+func (p X25519DeoxysIICipher) EncryptEnvelope(plaintext []byte) *FancyEnvelope {
 	// Txs without data are just balance transfers, and all data in those is public.
 	if len(plaintext) == 0 {
 		return nil
@@ -194,12 +192,12 @@ func (p X25519DeoxysIICipher) EncryptEnvelope(plaintext []byte) *DataEnvelope {
 
 	data, nonce := p.encryptCallData(plaintext)
 
-	return &DataEnvelope{
-		Body: cbor.Marshal(Body{
+	return &FancyEnvelope{
+		Body: Body{
 			Nonce: nonce,
 			Data:  data,
 			PK:    p.PublicKey,
-		}),
+		},
 		Format: p.Kind(),
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/oasisprotocol/deoxysii"
 	"github.com/oasisprotocol/oasis-core/go/common/cbor"
 	"github.com/twystd/tweetnacl-go/tweetnacl"
@@ -56,7 +57,12 @@ func TestPlainCipher(t *testing.T) {
 	}
 
 	// Decrypt
-	if string(cipher.Decrypt(nonce, ciphertext)) != string(TestData) {
+	plaintext, err := cipher.Decrypt(nonce, ciphertext)
+	if err != nil {
+		t.Fatalf("err while decrypting")
+	}
+
+	if string(plaintext) != string(TestData) {
 		t.Fatalf("decrypting data failed")
 	}
 
@@ -77,9 +83,17 @@ func TestPlainCipher(t *testing.T) {
 
 func TestDeoxysIICipher(t *testing.T) {
 	// private key is 64 bit
-	pair, _ := tweetnacl.CryptoBoxKeyPair()
-	peerKeyPair, _ := tweetnacl.CryptoBoxKeyPair()
-	cipher, err := NewX255919DeoxysIICipher(*pair, peerKeyPair.PublicKey)
+	privateKey, err := crypto.HexToECDSA("c07b151fbc1e7a11dff926111188f8d872f62eba0396da97c0a24adb75161750")
+	if err != nil {
+		t.Fatalf("could not init decode private key: %v", err)
+	}
+	pair := tweetnacl.KeyPair{
+		PublicKey: crypto.CompressPubkey(&privateKey.PublicKey),
+		SecretKey: crypto.FromECDSA(privateKey),
+	}
+	// TODO: refactor to use dummy peer pub key
+	peerPublicKey, _ := GetRuntimePublicKey()
+	cipher, err := NewX255919DeoxysIICipher(pair, peerPublicKey)
 
 	if err != nil {
 		t.Fatalf("could not init deoxysii cipher: %v", err)
@@ -109,15 +123,12 @@ func TestDeoxysIICipher(t *testing.T) {
 		t.Fatalf("deoxysii envelope format does not match: %v", envelope.Format)
 	}
 
-	var body Body
-	cbor.MustUnmarshal(envelope.Body, &body)
-
-	if body.Nonce == nil {
+	if envelope.Body.Nonce == nil {
 		t.Fatalf("nonce should not be nil")
 	}
 
-	if string(body.PK) != string(cipher.PublicKey) {
-		t.Fatalf("pk enveloped incorrectly: %v %v", body.PK, cipher.PublicKey)
+	if string(envelope.Body.PK) != string(cipher.PublicKey) {
+		t.Fatalf("pk enveloped incorrectly: %v %v", envelope.Body.PK, cipher.PublicKey)
 	}
 
 	// EncryptEncode
