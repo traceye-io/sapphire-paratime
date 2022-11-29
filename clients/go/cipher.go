@@ -2,6 +2,7 @@ package sapphire
 
 import (
 	"crypto/cipher"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -148,7 +149,8 @@ func NewX255919DeoxysIICipher(keypair tweetnacl.KeyPair, peerPublicKey []byte) (
 		return nil, err
 	}
 
-	cipher, err := deoxysii.New(key)
+	hashed := sha256.Sum256(key)
+	cipher, err := deoxysii.New(hashed[:])
 
 	if err != nil {
 		return nil, err
@@ -156,7 +158,7 @@ func NewX255919DeoxysIICipher(keypair tweetnacl.KeyPair, peerPublicKey []byte) (
 
 	return &X25519DeoxysIICipher{
 		PublicKey:  keypair.PublicKey,
-		PrivateKey: key,
+		PrivateKey: hashed[:],
 		Cipher:     cipher,
 	}, nil
 }
