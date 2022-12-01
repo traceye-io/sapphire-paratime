@@ -11,6 +11,7 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/oasisprotocol/emerald-web3-gateway/rpc/oasis"
 	"github.com/twystd/tweetnacl-go/tweetnacl"
 
@@ -21,6 +22,8 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
+const SapphireEndpoint = "https://testnet.sapphire.oasis.dev"
+
 const DefaultGasLimit = 30_000_000      // Default gas params are assigned in the web3 gateway.
 const DefaultGasPrice = 100_000_000_000 // 1 * 100_000_000_000
 const DefaultBlockRange = 15
@@ -28,6 +31,7 @@ const DefaultBlockRange = 15
 type WrappedBackend struct {
 	Backend          bind.ContractBackend
 	ChainID          big.Int
+	Cipher           Cipher
 	Key              ecdsa.PrivateKey
 	RuntimePublicKey []byte
 	TransactOpts     bind.TransactOpts
@@ -66,7 +70,7 @@ type Response struct {
 }
 
 func GetRuntimePublicKey() ([]byte, error) {
-	endpoint := "https://testnet.sapphire.oasis.dev/"
+	endpoint := SapphireEndpoint
 	request := Request{
 		Version: "2.0",
 		Method:  "oasis_callDataPublicKey",
@@ -101,16 +105,45 @@ func GetRuntimePublicKey() ([]byte, error) {
 	return pubKey.PublicKey, nil
 }
 
-func NewWrappedBackend(backend bind.ContractBackend, transactOpts *bind.TransactOpts, chainID *big.Int, privateKey *ecdsa.PrivateKey, signerFn func(digest [32]byte) ([]byte, error)) (*WrappedBackend, error) {
+func NewWrappedBackend(transactOpts *bind.TransactOpts, chainID *big.Int, privateKey *ecdsa.PrivateKey, cipher *Cipher, signerFn func(digest [32]byte) ([]byte, error)) (*WrappedBackend, error) {
+	// TODO: use chainid to determine endpoint
+	conn, err := ethclient.Dial(SapphireEndpoint)
+	if err != nil {
+		return nil, err
+	}
+
 	runtimePublicKey, err := GetRuntimePublicKey()
 
 	if err != nil {
 		return nil, err
 	}
 
+	var backendCipher Cipher
+
+	if cipher == nil {
+		publicKey, err := tweetnacl.ScalarMultBase(crypto.FromECDSA(privateKey))
+
+		if err != nil {
+			return nil, err
+		}
+
+		keypair := tweetnacl.KeyPair{
+			PublicKey: publicKey,
+			SecretKey: crypto.FromECDSA(privateKey),
+		}
+		backendCipher, err = NewX255919DeoxysIICipher(keypair, runtimePublicKey)
+
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		backendCipher = *cipher
+	}
+
 	return &WrappedBackend{
-		Backend:          backend,
+		Backend:          conn,
 		ChainID:          *chainID,
+		Cipher:           backendCipher,
 		Key:              *privateKey,
 		RuntimePublicKey: runtimePublicKey,
 		TransactOpts:     *transactOpts,
@@ -130,12 +163,7 @@ func (b WrappedBackend) SendTransaction(ctx context.Context, tx *types.Transacti
 
 	blockHash := header.Hash()
 	leash := NewLeash(header.Nonce.Uint64(), header.Number.Uint64(), blockHash[:], DefaultBlockRange)
-	publicKey, _ := tweetnacl.ScalarMultBase(crypto.FromECDSA(&b.Key))
-	keypair := tweetnacl.KeyPair{
-		PublicKey: publicKey,
-		SecretKey: crypto.FromECDSA(&b.Key),
-	}
-	cipher, _ := NewX255919DeoxysIICipher(keypair, b.RuntimePublicKey)
+
 	dataPack, _ := NewDataPack(b.Signer, tx.ChainId().Uint64(), b.TransactOpts.From[:], addressToByte(tx.To()), tx.Gas(), tx.GasPrice(), tx.Value(), tx.Data(), leash)
 
 	legacyTx := &types.LegacyTx{
@@ -144,7 +172,7 @@ func (b WrappedBackend) SendTransaction(ctx context.Context, tx *types.Transacti
 		GasPrice: tx.GasPrice(),
 		Gas:      DefaultGasLimit,
 		Value:    tx.Value(),
-		Data:     dataPack.EncryptEncode(cipher),
+		Data:     dataPack.EncryptEncode(b.Cipher),
 	}
 
 	baseTx := *types.NewTx(legacyTx)
@@ -165,26 +193,20 @@ func (b WrappedBackend) CallContract(ctx context.Context, call ethereum.CallMsg,
 	blockHash := header.Hash()
 	leash := NewLeash(header.Nonce.Uint64(), header.Number.Uint64(), blockHash[:], DefaultBlockRange)
 
-	publicKey, _ := tweetnacl.ScalarMultBase(crypto.FromECDSA(&b.Key))
-	keypair := tweetnacl.KeyPair{
-		PublicKey: publicKey,
-		SecretKey: crypto.FromECDSA(&b.Key),
-	}
-	cipher, _ := NewX255919DeoxysIICipher(keypair, b.RuntimePublicKey)
 	dataPack, err := NewDataPack(b.Signer, b.ChainID.Uint64(), call.From[:], addressToByte(call.To), DefaultGasLimit, call.GasPrice, call.Value, call.Data, leash)
 
 	if err != nil {
 		return nil, err
 	}
 
-	call.Data = dataPack.EncryptEncode(cipher)
+	call.Data = dataPack.EncryptEncode(b.Cipher)
 	res, err := b.Backend.CallContract(ctx, call, blockNumber)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return cipher.DecryptEncoded(res)
+	return b.Cipher.DecryptEncoded(res)
 }
 
 func (b WrappedBackend) CodeAt(ctx context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error) {
