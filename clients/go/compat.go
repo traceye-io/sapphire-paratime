@@ -214,18 +214,20 @@ func (b WrappedBackend) CodeAt(ctx context.Context, contract common.Address, blo
 }
 
 func (b WrappedBackend) EstimateGas(ctx context.Context, call ethereum.CallMsg) (gas uint64, err error) {
-	header, err := b.Backend.HeaderByNumber(ctx, nil)
-	if err != nil {
-		return 0, err
-	}
+	return DefaultGasLimit, nil
+	// TODO: re-enable
+	// header, err := b.Backend.HeaderByNumber(ctx, nil)
+	// if err != nil {
+	// 	return 0, err
+	// }
 
-	blockHash := header.Hash()
-	leash := NewLeash(header.Nonce.Uint64(), header.Number.Uint64(), blockHash[:], DefaultBlockRange)
+	// blockHash := header.Hash()
+	// leash := NewLeash(header.Nonce.Uint64(), header.Number.Uint64(), blockHash[:], DefaultBlockRange)
 
-	dataPack, _ := NewDataPack(b.Signer, b.ChainID.Uint64(), call.From[:], addressToByte(call.To), DefaultGasLimit, call.GasPrice, call.Value, call.Data, leash)
-	call.Data = dataPack.Encode()
+	// dataPack, _ := NewDataPack(b.Signer, b.ChainID.Uint64(), call.From[:], addressToByte(call.To), DefaultGasLimit, call.GasPrice, call.Value, call.Data, leash)
+	// call.Data = dataPack.Encode()
 
-	return b.Backend.EstimateGas(ctx, call)
+	// return b.Backend.EstimateGas(ctx, call)
 }
 
 func (b WrappedBackend) FilterLogs(ctx context.Context, query ethereum.FilterQuery) ([]types.Log, error) {
