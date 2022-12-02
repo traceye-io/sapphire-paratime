@@ -161,10 +161,29 @@ func (b WrappedBackend) SendTransaction(ctx context.Context, tx *types.Transacti
 		return err
 	}
 
+	baseTx, _ := NewSapphireTransaction(header, tx, b.Signer, b.TransactOpts.From, b.Cipher)
+
+	signer := types.LatestSignerForChainID(tx.ChainId())
+	signature, err := crypto.Sign(signer.Hash(&baseTx).Bytes(), &b.Key)
+
+	if err != nil {
+		return err
+	}
+
+	signedTx, err := baseTx.WithSignature(signer, signature)
+
+	if err != nil {
+		return err
+	}
+
+	return b.Backend.SendTransaction(ctx, signedTx)
+}
+
+func NewSapphireTransaction(header *types.Header, tx *types.Transaction, signer Signer, from common.Address, cipher Cipher) (types.Transaction, error) {
 	blockHash := header.Hash()
 	leash := NewLeash(header.Nonce.Uint64(), header.Number.Uint64(), blockHash[:], DefaultBlockRange)
 
-	dataPack, _ := NewDataPack(b.Signer, tx.ChainId().Uint64(), b.TransactOpts.From[:], addressToByte(tx.To()), tx.Gas(), tx.GasPrice(), tx.Value(), tx.Data(), leash)
+	dataPack, _ := NewDataPack(signer, tx.ChainId().Uint64(), from[:], addressToByte(tx.To()), tx.Gas(), tx.GasPrice(), tx.Value(), tx.Data(), leash)
 
 	legacyTx := &types.LegacyTx{
 		To:       tx.To(),
@@ -172,34 +191,38 @@ func (b WrappedBackend) SendTransaction(ctx context.Context, tx *types.Transacti
 		GasPrice: tx.GasPrice(),
 		Gas:      DefaultGasLimit,
 		Value:    tx.Value(),
-		Data:     dataPack.EncryptEncode(b.Cipher),
+		Data:     dataPack.EncryptEncode(cipher),
 	}
 
-	baseTx := *types.NewTx(legacyTx)
-
-	signer := types.LatestSignerForChainID(tx.ChainId())
-	signature, _ := crypto.Sign(signer.Hash(&baseTx).Bytes(), &b.Key)
-	signedTx, _ := baseTx.WithSignature(signer, signature)
-
-	return b.Backend.SendTransaction(ctx, signedTx)
+	return *types.NewTx(legacyTx), nil
 }
 
-func (b WrappedBackend) CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
-	header, err := b.Backend.HeaderByNumber(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-
+func packContractCall(header *types.Header, call *ethereum.CallMsg, chainID uint64, signer Signer, cipher Cipher) error {
 	blockHash := header.Hash()
 	leash := NewLeash(header.Nonce.Uint64(), header.Number.Uint64(), blockHash[:], DefaultBlockRange)
 
-	dataPack, err := NewDataPack(b.Signer, b.ChainID.Uint64(), call.From[:], addressToByte(call.To), DefaultGasLimit, call.GasPrice, call.Value, call.Data, leash)
+	dataPack, err := NewDataPack(signer, chainID, call.From[:], addressToByte(call.To), DefaultGasLimit, call.GasPrice, call.Value, call.Data, leash)
+
+	if err != nil {
+		return err
+	}
+
+	call.Data = dataPack.EncryptEncode(cipher)
+
+	return nil
+}
+
+func (b WrappedBackend) CallContract(ctx context.Context, call ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
+	header, err := b.Backend.HeaderByNumber(ctx, blockNumber)
 
 	if err != nil {
 		return nil, err
 	}
 
-	call.Data = dataPack.EncryptEncode(b.Cipher)
+	if err = packContractCall(header, &call, b.ChainID.Uint64(), b.Signer, b.Cipher); err != nil {
+		return nil, err
+	}
+
 	res, err := b.Backend.CallContract(ctx, call, blockNumber)
 
 	if err != nil {
