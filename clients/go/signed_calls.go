@@ -35,22 +35,15 @@ type Data struct {
 }
 
 // DataEnvelope is an oasis-sdk `Call` without optional fields.
-//
-// Replace this with an actual format-bearing `Call` during encryption using
-// a callformat encode method.
 type DataEnvelope struct {
 	Body   []byte `json:"body"`
 	Format uint64 `json:"format,omitempty"` // reuse for now, TODO swap later
 }
 
-type PlainEnvelope struct {
-	Body   []byte `json:"body"`
-	Format uint64 `json:"format,omitempty"` // reuse for now, TODO swap later
-}
-
-type FancyEnvelope struct {
+// EncryptedBodyEnvelope is an oasis-sdk `Call` with optional fields.
+type EncryptedBodyEnvelope struct {
 	Body   Body   `json:"body"`
-	Format uint64 `json:"format"` // reuse for now, TODO swap later
+	Format uint64 `json:"format"`
 }
 
 type Body struct {

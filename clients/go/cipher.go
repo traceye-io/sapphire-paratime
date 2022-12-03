@@ -109,7 +109,7 @@ func (p PlainCipher) encryptCallData(plaintext []byte) (ciphertext []byte, nonce
 	return plaintext, make([]byte, 0)
 }
 
-func (p PlainCipher) EncryptEnvelope(plaintext []byte) *PlainEnvelope {
+func (p PlainCipher) EncryptEnvelope(plaintext []byte) *DataEnvelope {
 	// Txs without data are just balance transfers, and all data in those is public.
 	if len(plaintext) == 0 {
 		return nil
@@ -118,13 +118,13 @@ func (p PlainCipher) EncryptEnvelope(plaintext []byte) *PlainEnvelope {
 	data, nonce := p.encryptCallData(plaintext)
 
 	if len(nonce) == 0 {
-		return &PlainEnvelope{
+		return &DataEnvelope{
 			Body:   data,
 			Format: p.Kind(),
 		}
 	}
 
-	return &PlainEnvelope{
+	return &DataEnvelope{
 		Body: cbor.Marshal(Body{
 			PK:    p.PublicKey(),
 			Nonce: nonce,
@@ -200,7 +200,7 @@ func (p X25519DeoxysIICipher) encryptCallData(plaintext []byte) (ciphertext []by
 	}))
 }
 
-func (p X25519DeoxysIICipher) EncryptEnvelope(plaintext []byte) *FancyEnvelope {
+func (p X25519DeoxysIICipher) EncryptEnvelope(plaintext []byte) *EncryptedBodyEnvelope {
 	// Txs without data are just balance transfers, and all data in those is public.
 	if len(plaintext) == 0 {
 		return nil
@@ -208,7 +208,7 @@ func (p X25519DeoxysIICipher) EncryptEnvelope(plaintext []byte) *FancyEnvelope {
 
 	data, nonce := p.encryptCallData(plaintext)
 
-	return &FancyEnvelope{
+	return &EncryptedBodyEnvelope{
 		Body: Body{
 			Nonce: nonce,
 			Data:  data,
