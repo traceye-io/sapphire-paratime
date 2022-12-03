@@ -5,28 +5,45 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"encoding/json"
-	"io"
 	"math/big"
 	"net/http"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/oasisprotocol/emerald-web3-gateway/rpc/oasis"
 	"github.com/twystd/tweetnacl-go/tweetnacl"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-const SapphireEndpoint = "https://testnet.sapphire.oasis.dev"
-
 const DefaultGasLimit = 30_000_000      // Default gas params are assigned in the web3 gateway.
 const DefaultGasPrice = 100_000_000_000 // 1 * 100_000_000_000
 const DefaultBlockRange = 15
+
+type NetworkParams struct {
+	Name           string
+	ChainID        big.Int
+	DefaultGateway string
+	RuntimeID      string
+}
+
+var Networks = map[uint64]NetworkParams{
+	23295: {
+		Name:           "testnet",
+		ChainID:        *big.NewInt(23295),
+		DefaultGateway: "https://testnet.sapphire.oasis.dev",
+		RuntimeID:      "0x000000000000000000000000000000000000000000000000a6d1e3ebf60dff6c",
+	},
+	23294: {
+		Name:           "mainnet",
+		ChainID:        *big.NewInt(23294),
+		DefaultGateway: "https://sapphire.oasis.dev",
+		RuntimeID:      "0x0000000000000000000000000000000000000000000000000000000000000000",
+	},
+}
 
 type WrappedBackend struct {
 	Backend          bind.ContractBackend
@@ -40,14 +57,6 @@ type WrappedBackend struct {
 
 type WrappedSigner struct {
 	SignFn func(digest [32]byte) ([]byte, error)
-}
-
-func addressToByte(addr *common.Address) []byte {
-	if addr != nil {
-		return addr[:]
-	}
-
-	return nil
 }
 
 type Request struct {
@@ -69,8 +78,16 @@ type Response struct {
 	Result json.RawMessage `json:"result,omitempty"`
 }
 
-func GetRuntimePublicKey() ([]byte, error) {
-	endpoint := SapphireEndpoint
+func addressToByte(addr *common.Address) []byte {
+	if addr != nil {
+		return addr[:]
+	}
+
+	return nil
+}
+
+func GetRuntimePublicKey(chainID uint64) ([]byte, error) {
+	endpoint := Networks[chainID].DefaultGateway
 	request := Request{
 		Version: "2.0",
 		Method:  "oasis_callDataPublicKey",
@@ -105,14 +122,19 @@ func GetRuntimePublicKey() ([]byte, error) {
 	return pubKey.PublicKey, nil
 }
 
+func NewSigner(signerFn func(digest [32]byte) ([]byte, error)) WrappedSigner {
+	return WrappedSigner{
+		SignFn: signerFn,
+	}
+}
+
 func NewWrappedBackend(transactOpts *bind.TransactOpts, chainID *big.Int, privateKey *ecdsa.PrivateKey, cipher *Cipher, signerFn func(digest [32]byte) ([]byte, error)) (*WrappedBackend, error) {
-	// TODO: use chainid to determine endpoint
-	conn, err := ethclient.Dial(SapphireEndpoint)
+	conn, err := ethclient.Dial(Networks[chainID.Uint64()].DefaultGateway)
 	if err != nil {
 		return nil, err
 	}
 
-	runtimePublicKey, err := GetRuntimePublicKey()
+	runtimePublicKey, err := GetRuntimePublicKey(chainID.Uint64())
 
 	if err != nil {
 		return nil, err
@@ -161,17 +183,18 @@ func (b WrappedBackend) SendTransaction(ctx context.Context, tx *types.Transacti
 		return err
 	}
 
-	baseTx, _ := NewSapphireTransaction(header, tx, b.Signer, b.TransactOpts.From, b.Cipher)
+	baseTx, err := NewSapphireTransaction(header, tx, b.Signer, b.TransactOpts.From, b.Cipher)
+	if err != nil {
+		return err
+	}
 
 	signer := types.LatestSignerForChainID(tx.ChainId())
-	signature, err := crypto.Sign(signer.Hash(&baseTx).Bytes(), &b.Key)
-
+	signature, err := crypto.Sign(signer.Hash(baseTx).Bytes(), &b.Key)
 	if err != nil {
 		return err
 	}
 
 	signedTx, err := baseTx.WithSignature(signer, signature)
-
 	if err != nil {
 		return err
 	}
@@ -179,11 +202,14 @@ func (b WrappedBackend) SendTransaction(ctx context.Context, tx *types.Transacti
 	return b.Backend.SendTransaction(ctx, signedTx)
 }
 
-func NewSapphireTransaction(header *types.Header, tx *types.Transaction, signer Signer, from common.Address, cipher Cipher) (types.Transaction, error) {
+func NewSapphireTransaction(header *types.Header, tx *types.Transaction, signer Signer, from common.Address, cipher Cipher) (*types.Transaction, error) {
 	blockHash := header.Hash()
 	leash := NewLeash(header.Nonce.Uint64(), header.Number.Uint64(), blockHash[:], DefaultBlockRange)
 
-	dataPack, _ := NewDataPack(signer, tx.ChainId().Uint64(), from[:], addressToByte(tx.To()), tx.Gas(), tx.GasPrice(), tx.Value(), tx.Data(), leash)
+	dataPack, err := NewDataPack(signer, tx.ChainId().Uint64(), from[:], addressToByte(tx.To()), tx.Gas(), tx.GasPrice(), tx.Value(), tx.Data(), leash)
+	if err != nil {
+		return nil, err
+	}
 
 	legacyTx := &types.LegacyTx{
 		To:       tx.To(),
@@ -194,7 +220,7 @@ func NewSapphireTransaction(header *types.Header, tx *types.Transaction, signer 
 		Data:     dataPack.EncryptEncode(cipher),
 	}
 
-	return *types.NewTx(legacyTx), nil
+	return types.NewTx(legacyTx), nil
 }
 
 func packContractCall(header *types.Header, call *ethereum.CallMsg, chainID uint64, signer Signer, cipher Cipher) error {
@@ -236,19 +262,19 @@ func (b WrappedBackend) CodeAt(ctx context.Context, contract common.Address, blo
 	return b.Backend.CodeAt(ctx, contract, blockNumber)
 }
 
+// Return Sapphire default gas limit.
 func (b WrappedBackend) EstimateGas(ctx context.Context, call ethereum.CallMsg) (gas uint64, err error) {
 	return DefaultGasLimit, nil
 	// TODO: re-enable
-	// header, err := b.Backend.HeaderByNumber(ctx, nil)
+	// header, err := b.Backend.HeaderByNumber(ctx, blockNumber)
+
 	// if err != nil {
-	// 	return 0, err
+	// 	return nil, err
 	// }
 
-	// blockHash := header.Hash()
-	// leash := NewLeash(header.Nonce.Uint64(), header.Number.Uint64(), blockHash[:], DefaultBlockRange)
-
-	// dataPack, _ := NewDataPack(b.Signer, b.ChainID.Uint64(), call.From[:], addressToByte(call.To), DefaultGasLimit, call.GasPrice, call.Value, call.Data, leash)
-	// call.Data = dataPack.Encode()
+	// if err = packContractCall(header, &call, b.ChainID.Uint64(), b.Signer, b.Cipher); err != nil {
+	// 	return nil, err
+	// }
 
 	// return b.Backend.EstimateGas(ctx, call)
 }
@@ -269,8 +295,11 @@ func (b WrappedBackend) PendingNonceAt(ctx context.Context, account common.Addre
 	return b.Backend.PendingNonceAt(ctx, account)
 }
 
+// Return Sapphire default gas price.
 func (b WrappedBackend) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
-	return b.Backend.SuggestGasPrice(ctx)
+	return big.NewInt(DefaultGasPrice), nil
+	// TODO: re-enable
+	// return b.Backend.SuggestGasPrice(ctx)
 }
 
 func (b WrappedBackend) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
@@ -279,75 +308,4 @@ func (b WrappedBackend) SuggestGasTipCap(ctx context.Context) (*big.Int, error) 
 
 func (b WrappedBackend) SubscribeFilterLogs(ctx context.Context, query ethereum.FilterQuery, ch chan<- types.Log) (ethereum.Subscription, error) {
 	return b.Backend.SubscribeFilterLogs(ctx, query, ch)
-}
-
-func NewSigner(signerFn func(digest [32]byte) ([]byte, error)) WrappedSigner {
-	return WrappedSigner{
-		SignFn: signerFn,
-	}
-}
-
-// NewKeyedTransactorWithChainID is a utility method to easily create a transaction signer
-// from a single private key.
-func NewKeyedTransactorWithChainID(key *ecdsa.PrivateKey, chainID *big.Int) (*bind.TransactOpts, error) {
-	if chainID == nil {
-		return nil, bind.ErrNoChainID
-	}
-	signer := types.LatestSignerForChainID(chainID)
-	from := crypto.PubkeyToAddress(key.PublicKey)
-	return &bind.TransactOpts{
-		GasPrice: big.NewInt(DefaultGasPrice),
-		GasLimit: DefaultGasLimit,
-		From:     from,
-		Signer: func(address common.Address, tx *types.Transaction) (*types.Transaction, error) {
-			if address != from {
-				return nil, bind.ErrNotAuthorized
-			}
-			signature, err := crypto.Sign(signer.Hash(tx).Bytes(), key)
-			if err != nil {
-				return nil, err
-			}
-			return tx.WithSignature(signer, signature)
-		},
-		Context: context.Background(),
-	}, nil
-}
-
-// NewKeyStoreTransactorWithChainID is a utility method to easily create a transaction signer from
-// an decrypted key from a keystore.
-func NewKeyStoreTransactorWithChainID(keystore *keystore.KeyStore, account accounts.Account, chainID *big.Int) (*bind.TransactOpts, error) {
-	if chainID == nil {
-		return nil, bind.ErrNoChainID
-	}
-	signer := types.LatestSignerForChainID(chainID)
-	return &bind.TransactOpts{
-		GasPrice: big.NewInt(DefaultGasPrice),
-		GasLimit: DefaultGasLimit,
-		From:     account.Address,
-		Signer: func(address common.Address, tx *types.Transaction) (*types.Transaction, error) {
-			if address != account.Address {
-				return nil, bind.ErrNotAuthorized
-			}
-			signature, err := keystore.SignHash(account, signer.Hash(tx).Bytes())
-			if err != nil {
-				return nil, err
-			}
-			return tx.WithSignature(signer, signature)
-		},
-		Context: context.Background(),
-	}, nil
-}
-
-// NewTransactorWithChainID is a utility method to easily create a transaction signer from
-// an encrypted json key stream and the associated passphrase.
-func NewTransactorWithChainID(keyin io.Reader, passphrase string, chainID *big.Int) (*bind.TransactOpts, error) {
-	json, err := io.ReadAll(keyin)
-	if err != nil {
-		return nil, err
-	}
-	key, err := keystore.DecryptKey(json, passphrase)
-	if err != nil {
-		return nil, err
-	}
-	return NewKeyedTransactorWithChainID(key.PrivateKey, chainID)
 }
