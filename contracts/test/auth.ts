@@ -160,7 +160,7 @@ describe('Auth', function () {
       siweStr4,
       await erc191sign(siweStr4, account),
     );
-    await delay(expiration.getTime() - new Date(Date.now()).getTime());
+    await delay(expiration.getTime() - Date.now());
     await siweAuthTests.doNothing();
     await expect(siweAuthTests.testVerySecretMessage(bearer4)).to.be.reverted;
 
