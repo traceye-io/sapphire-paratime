@@ -161,13 +161,8 @@ describe('Auth', function () {
         siweStr4,
         await erc191sign(siweStr4, account),
       );
-      console.log('1', Date.now())
       await delay(expiration.getTime() - Date.now());
-      console.log('2', Date.now())
-      await siweAuthTests.doNothing(); // +1 block
-      console.log('3', Date.now())
-      await siweAuthTests.doNothing(); // +1 block
-      console.log('4', Date.now())
+      await delay(6000);
       await expect(siweAuthTests.testVerySecretMessage(bearer4)).to.be.reverted;
 
       // Revoke bearer.
