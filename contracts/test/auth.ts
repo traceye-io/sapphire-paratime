@@ -13,7 +13,7 @@ function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-describe('Auth', function () {
+describe.only('Auth', function () {
   async function deploy(domain: string) {
     const SiweAuthTests_factory = await ethers.getContractFactory(
       'SiweAuthTests',
@@ -161,9 +161,13 @@ describe('Auth', function () {
         siweStr4,
         await erc191sign(siweStr4, account),
       );
+      console.log('1', Date.now())
       await delay(expiration.getTime() - Date.now());
+      console.log('2', Date.now())
       await siweAuthTests.doNothing(); // +1 block
+      console.log('3', Date.now())
       await siweAuthTests.doNothing(); // +1 block
+      console.log('4', Date.now())
       await expect(siweAuthTests.testVerySecretMessage(bearer4)).to.be.reverted;
 
       // Revoke bearer.
