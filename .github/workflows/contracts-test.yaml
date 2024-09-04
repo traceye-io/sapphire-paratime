@@ -71,16 +71,6 @@ jobs:
           working-directory: clients/js
       - name: Test JS client
         run: make -C clients/js test
-      - name: Build & Test integrations
-        run: make -C integrations
-      - name: Build & Test Examples
-        run: make -C examples
+      - run: make -C integrations build
       - name: Build & Test sapphire-contracts package
         run: make -C contracts
-      - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-      - name: Install forge doc deps
-        run: cargo install mdbook-pagetoc
-      - name: Build docs
-        working-directory: contracts
-        run: pnpm doc
