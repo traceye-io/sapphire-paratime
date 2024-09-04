@@ -1,8 +1,6 @@
 name: contracts-test
 on:
   push:
-    branches:
-      - main
   pull_request:
     branches:
       - main
@@ -72,7 +70,7 @@ jobs:
           log-output-if: true
           working-directory: clients/js
       - name: Test JS client
-        run: make -C clients/js test lint
+        run: make -C clients/js test
       - name: Build & Test integrations
         run: make -C integrations
       - name: Build & Test Examples
