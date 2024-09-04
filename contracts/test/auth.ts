@@ -104,74 +104,72 @@ describe('Auth', function () {
     ).to.be.reverted;
   });
 
-  for (let i = 0; i<20; i++) {
-    it('Should call authenticated method' + i, async function () {
-      // Skip this test on non-sapphire chains.
-      // It require on-chain encryption and/or signing.
-      if (
-        Number((await ethers.provider.getNetwork()).chainId) !=
-        NETWORKS.localnet.chainId
-      ) {
-        this.skip();
-      }
+  it('Should call authenticated method', async function () {
+    // Skip this test on non-sapphire chains.
+    // It require on-chain encryption and/or signing.
+    if (
+      Number((await ethers.provider.getNetwork()).chainId) !=
+      NETWORKS.localnet.chainId
+    ) {
+      this.skip();
+    }
 
-      const siweAuthTests = await deploy('localhost');
+    const siweAuthTests = await deploy('localhost');
 
-      // Author should read a very secret message.
-      const accounts = config.networks.hardhat
-        .accounts as HardhatNetworkHDAccountsConfig;
-      const account = ethers.HDNodeWallet.fromMnemonic(
-        ethers.Mnemonic.fromPhrase(accounts.mnemonic),
-        accounts.path + '/0',
-      );
-      const siweStr = await siweMsg('localhost', 0);
-      const bearer = await siweAuthTests.testLogin(
-        siweStr,
-        await erc191sign(siweStr, account),
-      );
-      expect(await siweAuthTests.testVerySecretMessage(bearer)).to.be.equal(
-        'Very secret message',
-      );
+    // Author should read a very secret message.
+    const accounts = config.networks.hardhat
+      .accounts as HardhatNetworkHDAccountsConfig;
+    const account = ethers.HDNodeWallet.fromMnemonic(
+      ethers.Mnemonic.fromPhrase(accounts.mnemonic),
+      accounts.path + '/0',
+    );
+    const siweStr = await siweMsg('localhost', 0);
+    const bearer = await siweAuthTests.testLogin(
+      siweStr,
+      await erc191sign(siweStr, account),
+    );
+    expect(await siweAuthTests.testVerySecretMessage(bearer)).to.be.equal(
+      'Very secret message',
+    );
 
-      // Anyone else trying to read the very secret message should fail.
-      const acc2 = ethers.HDNodeWallet.fromMnemonic(
-        ethers.Mnemonic.fromPhrase(accounts.mnemonic),
-        accounts.path + '/1',
-      );
-      const siweStr2 = await siweMsg('localhost', 1);
-      const bearer2 = await siweAuthTests.testLogin(
-        siweStr2,
-        await erc191sign(siweStr2, acc2),
-      );
-      await expect(siweAuthTests.testVerySecretMessage(bearer2)).to.be.reverted;
+    // Anyone else trying to read the very secret message should fail.
+    const acc2 = ethers.HDNodeWallet.fromMnemonic(
+      ethers.Mnemonic.fromPhrase(accounts.mnemonic),
+      accounts.path + '/1',
+    );
+    const siweStr2 = await siweMsg('localhost', 1);
+    const bearer2 = await siweAuthTests.testLogin(
+      siweStr2,
+      await erc191sign(siweStr2, acc2),
+    );
+    await expect(siweAuthTests.testVerySecretMessage(bearer2)).to.be.reverted;
 
-      // Same user, hijacked bearer from another contract/domain.
-      const siweAuthTests2 = await deploy('localhost2');
-      const siweStr3 = await siweMsg('localhost2', 0);
-      const bearer3 = await siweAuthTests2.testLogin(
-        siweStr3,
-        await erc191sign(siweStr3, account),
-      );
-      await expect(siweAuthTests.testVerySecretMessage(bearer3)).to.be.reverted;
+    // Same user, hijacked bearer from another contract/domain.
+    const siweAuthTests2 = await deploy('localhost2');
+    const siweStr3 = await siweMsg('localhost2', 0);
+    const bearer3 = await siweAuthTests2.testLogin(
+      siweStr3,
+      await erc191sign(siweStr3, account),
+    );
+    await expect(siweAuthTests.testVerySecretMessage(bearer3)).to.be.reverted;
 
-      // Expired bearer.
-      const expiration = new Date(Date.now() + 500);
-      const siweStr4 = await siweMsg('localhost', 0, expiration); // Expire after 0.5 seconds.
-      const bearer4 = await siweAuthTests.testLogin(
-        siweStr4,
-        await erc191sign(siweStr4, account),
-      );
-      await delay(expiration.getTime() - Date.now());
-      await delay(6000);
-      await expect(siweAuthTests.testVerySecretMessage(bearer4)).to.be.reverted;
+    // Expired bearer.
+    const expiration = new Date(Date.now() + 500);
+    const siweStr4 = await siweMsg('localhost', 0, expiration); // Expire after 0.5 seconds.
+    const bearer4 = await siweAuthTests.testLogin(
+      siweStr4,
+      await erc191sign(siweStr4, account),
+    );
+    await delay(expiration.getTime() - Date.now());
+    await delay(6000);
+    await expect(siweAuthTests.testVerySecretMessage(bearer4)).to.be.reverted;
 
-      // Revoke bearer.
-      const bearer5 = await siweAuthTests.testLogin(
-        siweStr,
-        await erc191sign(siweStr, account),
-      );
-      await siweAuthTests.testRevokeBearer(ethers.keccak256(bearer5));
-      await expect(siweAuthTests.testVerySecretMessage(bearer5)).to.be.reverted;
-    });
-  }
+    // Revoke bearer.
+    const bearer5 = await siweAuthTests.testLogin(
+      siweStr,
+      await erc191sign(siweStr, account),
+    );
+    await siweAuthTests.testRevokeBearer(ethers.keccak256(bearer5));
+    await expect(siweAuthTests.testVerySecretMessage(bearer5)).to.be.reverted;
+  });
 });
