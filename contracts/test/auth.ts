@@ -13,7 +13,7 @@ function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-describe.only('Auth', function () {
+describe('Auth', function () {
   async function deploy(domain: string) {
     const SiweAuthTests_factory = await ethers.getContractFactory(
       'SiweAuthTests',
@@ -104,7 +104,7 @@ describe.only('Auth', function () {
     ).to.be.reverted;
   });
 
-  for (let i = 0; i<10; i++) {
+  for (let i = 0; i<20; i++) {
     it('Should call authenticated method' + i, async function () {
       // Skip this test on non-sapphire chains.
       // It require on-chain encryption and/or signing.
