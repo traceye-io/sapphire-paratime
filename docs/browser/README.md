@@ -155,7 +155,7 @@ npm run start
 If all goes well the web server will spin up and your browser should
 automatically open `http://localhost:3000`.
 
-![Hardhat boilerplate frontend](images/hardhat-boilerplate-frontend1.png)
+![Hardhat boilerplate frontend](../images/hardhat-boilerplate-frontend1.png)
 
 Go ahead and connect the wallet. If you haven't done it yet, you will have
 to add the [Sapphire ParaTime Testnet network to your
@@ -163,7 +163,7 @@ Metamask][sapphire-testnet]. Once connected, the frontend will make an unsigned
 call to the `balanceOf` view and show you the amount of `MHT`s in your selected
 Metamask account.
 
-![MHT balance of your account](images/hardhat-boilerplate-frontend2.png)
+![MHT balance of your account](../images/hardhat-boilerplate-frontend2.png)
 
 Next, let's transfer some `MHT`s. Fill in the amount, the address and hit the
 *Transfer* button. Metamask will show you the popup to sign and submit the
