@@ -1,6 +1,4 @@
-# Sapphire + [Ethers.js v6]
-
-[Ethers.js v6]: https://docs.ethers.org/v6/
+# Sapphire + Ethers
 
 [![version][ethers-v6-version]][ethers-v6-npm]
 [![size][ethers-v6-size]][ethers-v6-bundlephobia]
@@ -23,6 +21,7 @@ communicate with and sign transactions on Sapphire. However, server-side apps,
 test suites and dApps using account abstraction (or those which directly use a
 Wallet) will need to use this Ethers v6 integration package.
 
+[Ethers.js]: https://docs.ethers.org/v6/
 [Wallet]: https://docs.ethers.org/v6/api/wallet/
 [ethers-v6-npm]: https://www.npmjs.com/package/@oasisprotocol/sapphire-ethers-v6
 [ethers-v6-version]: https://img.shields.io/npm/v/@oasisprotocol/sapphire-ethers-v6
