@@ -44,7 +44,7 @@ access them!**
 
 The contract in the Hardhat boilerplate is ERC-20-compatible and emits the
 `transfer` event. If your wish to preserve confidentiality, you can comment
-out [line 66]. Read [the guide](guide.mdx#contract-logs) to learn more.
+out [line 66]. Read [the guide](../guide.mdx#contract-logs) to learn more.
 
 :::
 
@@ -207,13 +207,13 @@ we recommend that you check out the official [Oasis starter] files.
 :::
 
 [block explorer]: https://explorer.oasis.io/testnet/sapphire/tx/0x3303dea5d48291d1564cad573f21fc71fcbdc2b862e17e056287fd9207e3bc53
-[guide-transaction-calls]: guide.mdx#transactions--calls
+[guide-transaction-calls]: ../guide.mdx#transactions--calls
 [Hardhat boilerplate repo]: https://github.com/NomicFoundation/hardhat-boilerplate
 [Hardhat boilerplate]: https://hardhat.org/tutorial/boilerplate-project
 [Hardhat tutorial]: https://hardhat.org/tutorial
 [line 66]: https://github.com/NomicFoundation/hardhat-boilerplate/blob/13bd712c1285b2de572f14d20e6a750ae08565c0/contracts/Token.sol#L66
 [quickstart]: quickstart.mdx#add-the-sapphire-testnet-to-hardhat
-[sapphire-testnet]: ./network.mdx#rpc-endpoints
+[sapphire-testnet]: ../network.mdx#rpc-endpoints
 [Sapphire ParaTime examples]: https://github.com/oasisprotocol/sapphire-paratime/tree/main/examples/hardhat-boilerplate
 [social-media]: https://github.com/oasisprotocol/docs/blob/main/docs/get-involved/README.md#social-media-channels
 [pnpm]: https://pnpm.io
