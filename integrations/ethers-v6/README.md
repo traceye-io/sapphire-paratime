@@ -1,12 +1,12 @@
-# Sapphire + Ethers
+# Sapphire-Ethers
 
 [![version][ethers-v6-version]][ethers-v6-npm]
 [![size][ethers-v6-size]][ethers-v6-bundlephobia]
 ![downloads][ethers-v6-downloads]
 
 Integrate your Ethereum-based applications with the privacy features of Oasis
-Sapphire when using the [Ethers.js] library (version 6). This README provides a
-guide on how to get started with the `@oasisprotocol/sapphire-ethers-v6` package.
+Sapphire when using the [Ethers.js] library (version 6). This guide show you
+how to get started with the `@oasisprotocol/sapphire-ethers-v6` package.
 
 It may be necessary to use this package to enable automatic end-to-end
 encryption between the application and the smart contracts deployed on Sapphire.

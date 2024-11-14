@@ -1,4 +1,4 @@
-# Sapphire + Wagmi
+# Sapphire-Wagmi
 
 [![NPM Package](https://img.shields.io/npm/v/@oasisprotocol/sapphire-wagmi-v2)](https://www.npmjs.org/package/@oasisprotocol/sapphire-wagmi-v2)
 

@@ -1,4 +1,4 @@
-# Sapphire + Viem
+# Sapphire-Viem
 
 [![NPM Package](https://img.shields.io/npm/v/@oasisprotocol/sapphire-viem-v2)](https://www.npmjs.org/package/@oasisprotocol/sapphire-viem-v2)
 
