@@ -1,4 +1,6 @@
-# @oasisprotocol/sapphire-wagmi-v2
+# WAGMI
+
+## @oasisprotocol/sapphire-wagmi-v2
 
 A plugin for Wagmi v2 that wraps the providers connected to the Sapphire network to enable end-to-end encryption for transactions, view calls and gas
 estimations
