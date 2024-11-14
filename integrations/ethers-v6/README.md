@@ -1,6 +1,5 @@
-# Ethers
+# Sapphire + [Ethers.js v6]
 
-## Sapphire + [Ethers.js v6]
 [Ethers.js v6]: https://docs.ethers.org/v6/
 
 [![version][ethers-v6-version]][ethers-v6-npm]

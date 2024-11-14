@@ -1,6 +1,6 @@
-# Viem
+# Sapphire + Viem
 
-## @oasisprotocol/sapphire-viem-v2
+[![NPM Package](https://img.shields.io/npm/v/@oasisprotocol/sapphire-viem-v2)](https://www.npmjs.org/package/@oasisprotocol/sapphire-viem-v2)
 
 A plugin for [Viem] 2.x that encrypts transactions, gas estimations and calls to
 the Oasis Sapphire network to enable end-to-end encryption between the dApp and

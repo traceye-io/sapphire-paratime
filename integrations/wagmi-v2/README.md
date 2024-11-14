@@ -1,6 +1,6 @@
-# WAGMI
+# Sapphire + Wagmi
 
-## @oasisprotocol/sapphire-wagmi-v2
+[![NPM Package](https://img.shields.io/npm/v/@oasisprotocol/sapphire-wagmi-v2)](https://www.npmjs.org/package/@oasisprotocol/sapphire-wagmi-v2)
 
 A plugin for Wagmi v2 that wraps the providers connected to the Sapphire network to enable end-to-end encryption for transactions, view calls and gas
 estimations
