@@ -5,7 +5,7 @@
 ![downloads][ethers-v6-downloads]
 
 Integrate your Ethereum-based applications with the privacy features of Oasis
-Sapphire when using the Ethers.js library (version 6). This README provides a
+Sapphire when using the [Ethers.js] library (version 6). This README provides a
 guide on how to get started with the `@oasisprotocol/sapphire-ethers-v6` package.
 
 It may be necessary to use this package to enable automatic end-to-end
