@@ -30,4 +30,7 @@ setup(
     url="https://github.com/oasisprotocol/sapphire-paratime",
     version="0.3.0",
     zip_safe=True,
+    package_data={
+        'sapphirepy': ['docs/*.html'],  # Include all HTML docs
+    },
 )
