@@ -8,6 +8,13 @@ on:
       - clients/py/**
     branches:
       - main
+  pull_request:
+    paths:
+      - clients/js/**
+      - contracts/**
+      - clients/py/**
+    branches:
+      - main
 
 # Cancel in-progress jobs on same branch.
 concurrency:
