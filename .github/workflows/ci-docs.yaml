@@ -178,7 +178,7 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: docs/build/html
+          publish_dir: clients/py/docs/build/html
           publish_branch: api-reference
           destination_dir: py
           commit_message: Deploy Python API reference ${{ github.event.head_commit.message }}
