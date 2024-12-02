@@ -30,6 +30,7 @@ source_suffix = {
 templates_path = ['_templates']
 exclude_patterns = []
 
+html_extra_path = ['.nojekyll']
 
 
 # -- Options for HTML output -------------------------------------------------
