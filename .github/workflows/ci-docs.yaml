@@ -164,20 +164,7 @@ jobs:
 
       - name: Build docs
         run: |
-          mkdir docs
-          cd docs
-          sphinx-quickstart --quiet --sep --project=sapphirepy --copyright="2024, Oasis Protocol Foundation" --author="team@oasisprotocol.org" --ext-autodoc --ext-viewcode
-          pip install furo
-          sed -i "s/^html_theme = 'alabaster'/html_theme = 'furo'/" source/conf.py
-          # Modify conf.py programmatically
-          sed -i "s/^extensions = \[/extensions = [\n    'myst_parser',/" source/conf.py
-          echo "source_suffix = {'.rst': 'restructuredtext', '.md': 'markdown'}" >> source/conf.py
-          
-          sed -i '/^Add your content/,/details\.$/d; /^sapphirepy documentation$/,/^=\+$/c\sapphirepy documentation\n========================\n\n.. automodule:: sapphirepy\n   :members:\n   :undoc-members:\n   :show-inheritance:\n\n.. include:: ../../README.md\n   :parser: markdown\n' source/index.rst
-          echo -e "\n   modules" >> source/index.rst
-          cd ..  # Back to project root
-          sphinx-apidoc -o docs/source/ $(pip show sapphire-py | grep Location | cut -d' ' -f2)/sapphirepy
-          
+          make docs
           cd docs
           make html
 
