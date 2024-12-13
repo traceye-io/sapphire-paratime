@@ -207,7 +207,7 @@ we recommend that you check out the official [Oasis starter] files.
 :::
 
 [block explorer]: https://explorer.oasis.io/testnet/sapphire/tx/0x3303dea5d48291d1564cad573f21fc71fcbdc2b862e17e056287fd9207e3bc53
-[guide-transaction-calls]: guide.mdx#transactions--calls
+[guide-transaction-calls]: ./concept.mdx#transactions--calls
 [Hardhat boilerplate repo]: https://github.com/NomicFoundation/hardhat-boilerplate
 [Hardhat boilerplate]: https://hardhat.org/tutorial/boilerplate-project
 [Hardhat tutorial]: https://hardhat.org/tutorial
