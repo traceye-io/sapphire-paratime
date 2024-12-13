@@ -44,12 +44,13 @@ access them!**
 
 The contract in the Hardhat boilerplate is ERC-20-compatible and emits the
 `transfer` event. If your wish to preserve confidentiality, you can comment
-out [line 66]. Read [the guide](guide.mdx#contract-logs) to learn more.
+out [line 66]. Read [the guide] to learn more.
 
 :::
 
 [`wagmi`]: https://wagmi.sh/
 [`viem`]: https://viem.sh/
+[the guide]: ./concept.mdx#contract-logs
 
 ## Signing Sapphire Calls and Transactions in Browser
 
