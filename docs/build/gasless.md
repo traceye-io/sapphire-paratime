@@ -40,7 +40,7 @@ checks whether the transaction is valid, wraps it into a meta-transaction
 in [EIP-155] format. These steps are executed as a confidential call. Finally,
 the user submits the generated transaction to the network.
 
-![Diagram of the On-Chain Signing](images/gasless-on-chain-signer.svg)
+![Diagram of the On-Chain Signing](../images/gasless-on-chain-signer.svg)
 
 ### EIP155Signer
 
