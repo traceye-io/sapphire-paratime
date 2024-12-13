@@ -10,6 +10,6 @@ Sapphire has three clients in different programming languages:
 - Sapphire [Go]
 - Sapphire [Py]
 
-[JS]: ../clients/js/README.md
-[Go]: ../clients/go/README.md
-[Py]: ../clients/py/README.md
+[JS]: https://github.com/oasisprotocol/docs/blob/main/sapphire-paratime/clients/js/README.md
+[Go]: https://github.com/oasisprotocol/docs/blob/main/sapphire-paratime/clients/go/README.md
+[Py]: https://github.com/oasisprotocol/docs/blob/main/sapphire-paratime/clients/py/README.md
