@@ -36,7 +36,7 @@ You can find the details of the Oasis Sapphire Web3 endpoints
 
 ## Frontend Development
 
-We have support for the common frontned libraries
+We have support for the common frontend libraries
 
 - Ethers v5/v6
 - Viem
@@ -44,7 +44,7 @@ We have support for the common frontned libraries
 
 ## Backend Development
 
-If you want to connect and execute transactions from you backend, visit our
+If you want to connect and execute transactions from your backend, visit our
 [clients] chapter to see what other languages we support
 
 [clients]: clients.md
