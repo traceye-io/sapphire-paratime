@@ -267,7 +267,7 @@ creators can close the poll.
 Sapphire in a forked `@oasislabs/opengsn-cli` package. The diagram below
 illustrates a flow for signing a transaction by using a GSN[^1].
 
-![Diagram of the Gas Station Network Flow](images/gasless-gsn-flow.jpg)
+![Diagram of the Gas Station Network Flow](../images/gasless-gsn-flow.jpg)
 
 [^1]: The GSN flow diagram is courtesy of [OpenGSN documentation][opengsn-docs].
 

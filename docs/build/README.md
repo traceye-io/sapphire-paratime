@@ -10,12 +10,12 @@ Sapphire is programmable using any language that targets the EVM, such as Solidi
 Fe or Vyper. If you prefer to use an Ethereum framework like Hardhat or Foundry,
 you can also use those with Sapphire; all you need to do is set your Web3 gateway URL.
 You can find the details of the Oasis Sapphire Web3 endpoints
-[here](https://github.com/oasisprotocol/docs/blob/main/docs/dapp/sapphire/network.mdx#rpc-endpoints).
+[here](../network.mdx#rpc-endpoints).
 
 ### Transactions & Calls
 
 <!-- https://github.com/oasisprotocol/docs/blob/455980674563cad92ff1e1b62a7a5f2d4d6809f0/docs/general/images/architecture/client-km-compute.svg -->
-![Client, Key Manager, Compute Node diagram](../../general/images/architecture/client-km-compute.svg)
+![Client, Key Manager, Compute Node diagram](https://github.com/oasisprotocol/docs/blob/main/docs/general/images/architecture/client-km-compute.svg)
 
 The figure above illustrates the flow of a **confidential smart contract
 transaction** on Sapphire.
@@ -47,14 +47,14 @@ client's call data were originally encrypted or not.
 <details>
   <summary>Detailed confidential smart contract transaction flow on Sapphire</summary>
 
-![Diagram of the detailed confidential smart contract transaction flow on Sapphire](diagrams/c10l-smart-contract-tx.mmd.svg)
+![Diagram of the detailed confidential smart contract transaction flow on Sapphire](../diagrams/c10l-smart-contract-tx.mmd.svg)
 
 </details>
 
 <details>
   <summary>Detailed confidential smart contract call flow on Sapphire</summary>
 
-![Diagram of the detailed confidential smart contract call flow on Sapphire](diagrams/c10l-smart-contract-call.mmd.svg)
+![Diagram of the detailed confidential smart contract call flow on Sapphire](../diagrams/c10l-smart-contract-call.mmd.svg)
 
 </details>
 
