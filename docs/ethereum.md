@@ -2,7 +2,9 @@
 description: Differences to Ethereum
 ---
 
-# Sapphire vs Ethereum
+# Ethereum Compatibility
+
+## Sapphire vs Ethereum
 
 Sapphire is generally compatible with Ethereum, the EVM, and all the user and
 developer tooling that you are used to. In addition to confidentiality
@@ -14,7 +16,8 @@ transactions sent to it via transactions.
 There are also a few breaking changes compared to Ethereum though, but we think
 that you'll quickly grasp them:
 
-- [Sapphire vs Ethereum](#sapphire-vs-ethereum)
+- [Ethereum Compatibility](#ethereum-compatibility)
+  - [Sapphire vs Ethereum](#sapphire-vs-ethereum)
   - [Encrypted Contract State](#encrypted-contract-state)
   - [End-to-End Encrypted Transactions and Calls](#end-to-end-encrypted-transactions-and-calls)
   - [`from` Address is Zero for Unsigned Calls](#from-address-is-zero-for-unsigned-calls)
