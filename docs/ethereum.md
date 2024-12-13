@@ -2,7 +2,7 @@
 description: Differences to Ethereum
 ---
 
-## Sapphire vs Ethereum
+# Sapphire vs Ethereum
 
 Sapphire is generally compatible with Ethereum, the EVM, and all the user and
 developer tooling that you are used to. In addition to confidentiality
