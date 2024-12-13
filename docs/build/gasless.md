@@ -258,7 +258,6 @@ creators can close the poll.
 
 [demo-voting]: https://github.com/oasisprotocol/demo-voting
 [demo-voting-playground]: https://playground.oasis.io/demo-voting
-[dao-opl]: https://github.com/oasisprotocol/docs/blob/main/docs/dapp/opl/host.md
 [EIP-155]: https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md
 
 ## Gas Station Network
@@ -361,6 +360,7 @@ requests and forward them to the relay hub on Sapphire Testnet.
 
 We can test whether a relayed request can be forwarded and processed correctly.
 Scroll up to find the GSN deployment response and use the following parameters:
+
 - `Forwarder` as `--to`,
 - `Paymaster` as `--paymaster`,
 - your account address as `--from`

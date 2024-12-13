@@ -48,8 +48,6 @@ out [line 66]. Read the [concept] chapter to learn more.
 
 :::
 
-[`wagmi`]: https://wagmi.sh/
-[`viem`]: https://viem.sh/
 [concept]: ./concept.mdx#contract-logs
 
 ## Signing Sapphire Calls and Transactions in Browser
@@ -211,7 +209,6 @@ we recommend that you check out the official [Oasis starter] files.
 [guide-transaction-calls]: ./concept.mdx#transactions--calls
 [Hardhat boilerplate repo]: https://github.com/NomicFoundation/hardhat-boilerplate
 [Hardhat boilerplate]: https://hardhat.org/tutorial/boilerplate-project
-[Hardhat tutorial]: https://hardhat.org/tutorial
 [line 66]: https://github.com/NomicFoundation/hardhat-boilerplate/blob/13bd712c1285b2de572f14d20e6a750ae08565c0/contracts/Token.sol#L66
 [quickstart]: ../quickstart.mdx#add-the-sapphire-testnet-to-hardhat
 [sapphire-testnet]: ../network.mdx#rpc-endpoints
